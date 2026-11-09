@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Heart, Volume2, VolumeX } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Heart, Volume2, VolumeX } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { LotusIcon } from '../shared/LotusIcon';
 import { SerenityEngine, type TrackId } from '@/lib/serenityAudio';
@@ -97,12 +97,8 @@ export function SerenityAudioPlayer() {
   useEffect(() => {
     if (!isPlaying) return;
     const timer = setInterval(() => {
-      setCurrentTimeSec((prev) => {
-        if (prev + 1 >= currentTrack.durationSec) {
-          return 0;
-        }
-        return prev + 1;
-      });
+      // Stops at the end; the auto-advance effect below handles "track finished"
+      setCurrentTimeSec((prev) => Math.min(prev + 1, currentTrack.durationSec));
     }, 1000);
     return () => clearInterval(timer);
   }, [isPlaying, currentTrack.durationSec]);
@@ -138,11 +134,38 @@ export function SerenityAudioPlayer() {
     }
   };
 
-  const handleSeekOffset = (deltaSec: number) => {
-    setCurrentTimeSec((prev) =>
-      Math.max(0, Math.min(currentTrack.durationSec, prev + deltaSec))
-    );
+  const currentIndex = TRACKS.findIndex((t) => t.id === currentTrack.id);
+
+  // Playlist finished: turn the music off and reset
+  const finishPlaylist = () => {
+    engineRef.current?.stop();
+    setIsPlaying(false);
+    setCurrentTimeSec(0);
   };
+
+  const handleNext = () => {
+    if (currentIndex < TRACKS.length - 1) {
+      startTrack(TRACKS[currentIndex + 1].id);
+    } else {
+      finishPlaylist(); // to loop the playlist instead, use: startTrack(TRACKS[0].id);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentIndex > 0) {
+      startTrack(TRACKS[currentIndex - 1].id);
+    } else {
+      startTrack(TRACKS[0].id); // already first: restart it
+    }
+  };
+
+  // When the current track reaches its end, go to the next one (or stop after the last)
+  useEffect(() => {
+    if (isPlaying && currentTimeSec >= currentTrack.durationSec) {
+      handleNext();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTimeSec, isPlaying]);
 
   const formatTime = (sec: number) => {
     const m = Math.floor(sec / 60);
@@ -200,14 +223,7 @@ export function SerenityAudioPlayer() {
       {/* Audio Scrubber & Controls */}
       <div className="space-y-3 relative z-10">
         <div className="space-y-1">
-          <div
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const clickRatio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-              setCurrentTimeSec(Math.round(clickRatio * currentTrack.durationSec));
-            }}
-            className="w-full bg-white/20 h-2 rounded-full overflow-hidden cursor-pointer"
-          >
+          <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-[#F6B89E] to-[#E888B4] h-full rounded-full transition-all duration-300"
               style={{ width: `${progressPct}%` }}
@@ -223,11 +239,11 @@ export function SerenityAudioPlayer() {
         <div className="flex items-center justify-center gap-6 pt-1">
           <button
             type="button"
-            onClick={() => handleSeekOffset(-15)}
-            aria-label="Rewind 15 seconds"
+            onClick={handlePrevious}
+            aria-label="Previous track"
             className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
           >
-            <RotateCcw className="w-4 h-4" />
+            <SkipBack className="w-4 h-4" />
           </button>
 
           <button
@@ -245,11 +261,11 @@ export function SerenityAudioPlayer() {
 
           <button
             type="button"
-            onClick={() => handleSeekOffset(15)}
-            aria-label="Fast forward 15 seconds"
+            onClick={handleNext}
+            aria-label="Next track"
             className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
           >
-            <RotateCw className="w-4 h-4" />
+            <SkipForward className="w-4 h-4" />
           </button>
         </div>
 
