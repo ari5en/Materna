@@ -1,193 +1,105 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, RotateCcw, RotateCw, Heart } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, Pause, RotateCcw, RotateCw, Heart, Volume2, VolumeX } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { LotusIcon } from '../shared/LotusIcon';
+import { SerenityEngine, type TrackId } from '@/lib/serenityAudio';
 
 interface Track {
-  id: string;
+  id: TrackId;
   title: string;
   duration: string;
   durationSec: number;
   category: string;
   iconBg: string;
-  baseFreq: number;
-  filterFreq: number;
 }
+
+const TRACKS: Track[] = [
+  {
+    id: 't-1',
+    title: 'Harmonious Wind',
+    duration: '2:10',
+    durationSec: 130,
+    category: 'Womb White Noise',
+    iconBg: 'bg-[#C79BAF]',
+  },
+  {
+    id: 't-2',
+    title: 'Silent Streams',
+    duration: '2:10',
+    durationSec: 130,
+    category: 'Gentle Relaxation',
+    iconBg: 'bg-[#8FA2BA]',
+  },
+  {
+    id: 't-3',
+    title: 'Celestial Calm',
+    duration: '2:10',
+    durationSec: 130,
+    category: 'Newborn Sleep',
+    iconBg: 'bg-[#9887B8]',
+  },
+  {
+    id: 't-4',
+    title: 'Piano Instrument',
+    duration: '4:19',
+    durationSec: 259,
+    category: 'Maternal Peace',
+    iconBg: 'bg-[#A37B9D]',
+  },
+  {
+    id: 't-5',
+    title: 'Peaceful Rain',
+    duration: '3:23',
+    durationSec: 203,
+    category: 'Deep Rest',
+    iconBg: 'bg-[#7C6689]',
+  },
+];
 
 export function SerenityAudioPlayer() {
   const { profile, toggleFavoriteTrack } = useMaterna();
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<string | null>(null);
   const [currentTimeSec, setCurrentTimeSec] = useState<number>(0);
+  const [volume, setVolume] = useState(0.7);
+  const [muted, setMuted] = useState(false);
+
   const activeTrack = selectedTrack ?? profile.favorite_tracks?.[0] ?? 't-1';
 
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const gainNodeRef = useRef<GainNode | null>(null);
-  const sourceNodesRef = useRef<AudioNode[]>([]);
+  const engineRef = useRef<SerenityEngine | null>(null);
+  const getEngine = () => {
+    if (!engineRef.current) {
+      engineRef.current = new SerenityEngine(muted ? 0 : volume);
+    }
+    return engineRef.current;
+  };
 
-  const tracks: Track[] = [
-    {
-      id: 't-1',
-      title: 'Harmonious Wind',
-      duration: '2:10',
-      durationSec: 130,
-      category: 'Womb White Noise',
-      iconBg: 'bg-[#C79BAF]',
-      baseFreq: 174,
-      filterFreq: 380,
-    },
-    {
-      id: 't-2',
-      title: 'Silent Streams',
-      duration: '2:10',
-      durationSec: 130,
-      category: 'Gentle Relaxation',
-      iconBg: 'bg-[#8FA2BA]',
-      baseFreq: 285,
-      filterFreq: 520,
-    },
-    {
-      id: 't-3',
-      title: 'Celestial Calm',
-      duration: '2:10',
-      durationSec: 130,
-      category: 'Newborn Sleep',
-      iconBg: 'bg-[#9887B8]',
-      baseFreq: 396,
-      filterFreq: 320,
-    },
-    {
-      id: 't-4',
-      title: 'Piano Instrument',
-      duration: '4:19',
-      durationSec: 259,
-      category: 'Maternal Peace',
-      iconBg: 'bg-[#A37B9D]',
-      baseFreq: 432,
-      filterFreq: 450,
-    },
-    {
-      id: 't-5',
-      title: 'Peaceful Rain',
-      duration: '3:23',
-      durationSec: 203,
-      category: 'Deep Rest',
-      iconBg: 'bg-[#7C6689]',
-      baseFreq: 528,
-      filterFreq: 680,
-    },
-  ];
-
-  const currentTrack = tracks.find((t) => t.id === activeTrack) || tracks[0];
+  const currentTrack = TRACKS.find((t) => t.id === activeTrack) || TRACKS[0];
   const favoriteTracks = profile.favorite_tracks || [];
   const isFavorited = favoriteTracks.includes(currentTrack.id);
 
-  const stopAudioEngine = useCallback(() => {
-    sourceNodesRef.current.forEach((node) => {
-      try {
-        if ('stop' in node && typeof (node as any).stop === 'function') {
-          (node as any).stop();
-        }
-        node.disconnect();
-      } catch {
-        // ignore
-      }
-    });
-    sourceNodesRef.current = [];
+  // Cleanup only. The AudioContext is created inside click handlers (see below).
+  useEffect(() => {
+    return () => {
+      engineRef.current?.dispose();
+      engineRef.current = null;
+    };
   }, []);
 
-  const startAudioEngine = useCallback(
-    (track: Track) => {
-      stopAudioEngine();
-      if (typeof window === 'undefined') return;
-
-      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
-
-      if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-
-      const masterGain = ctx.createGain();
-      masterGain.gain.setValueAtTime(0.01, ctx.currentTime);
-      masterGain.gain.exponentialRampToValueAtTime(0.14, ctx.currentTime + 1.2);
-      masterGain.connect(ctx.destination);
-      gainNodeRef.current = masterGain;
-
-      // 1. Soft Brown/Pink Noise Generator (Soothing Womb / Rain / Stream Texture)
-      const bufferSize = ctx.sampleRate * 3;
-      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-      const output = noiseBuffer.getChannelData(0);
-      let lastOut = 0.0;
-      for (let i = 0; i < bufferSize; i++) {
-        const white = Math.random() * 2 - 1;
-        output[i] = (lastOut + 0.02 * white) / 1.02;
-        lastOut = output[i];
-        output[i] *= 1.8;
-      }
-
-      const whiteNoise = ctx.createBufferSource();
-      whiteNoise.buffer = noiseBuffer;
-      whiteNoise.loop = true;
-
-      const filter = ctx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(track.filterFreq, ctx.currentTime);
-
-      const noiseGain = ctx.createGain();
-      noiseGain.gain.setValueAtTime(0.35, ctx.currentTime);
-
-      whiteNoise.connect(filter);
-      filter.connect(noiseGain);
-      noiseGain.connect(masterGain);
-      whiteNoise.start(0);
-
-      // 2. Warm Ambient Harmonic Pad (Solfeggio / 432Hz Calming Drone)
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc2.type = 'sine';
-      osc1.frequency.setValueAtTime(track.baseFreq / 2, ctx.currentTime);
-      osc2.frequency.setValueAtTime((track.baseFreq / 2) * 1.5, ctx.currentTime);
-
-      const padGain = ctx.createGain();
-      padGain.gain.setValueAtTime(0.08, ctx.currentTime);
-
-      osc1.connect(padGain);
-      osc2.connect(padGain);
-      padGain.connect(masterGain);
-      osc1.start(0);
-      osc2.start(0);
-
-      sourceNodesRef.current = [whiteNoise, osc1, osc2];
-    },
-    [stopAudioEngine]
-  );
-
+  // Volume / mute
   useEffect(() => {
-    if (isPlaying) {
-      startAudioEngine(currentTrack);
-    } else {
-      stopAudioEngine();
-    }
-    return () => {
-      stopAudioEngine();
-    };
-  }, [isPlaying, activeTrack, currentTrack, startAudioEngine, stopAudioEngine]);
+    engineRef.current?.setVolume(muted ? 0 : volume);
+  }, [volume, muted]);
 
-  // 1-second playback timer
+  // 1-second playback timer (soundscapes loop forever)
   useEffect(() => {
     if (!isPlaying) return;
     const timer = setInterval(() => {
       setCurrentTimeSec((prev) => {
         if (prev + 1 >= currentTrack.durationSec) {
-          return 0; // loop seamlessly for sleeping baby
+          return 0;
         }
         return prev + 1;
       });
@@ -195,13 +107,34 @@ export function SerenityAudioPlayer() {
     return () => clearInterval(timer);
   }, [isPlaying, currentTrack.durationSec]);
 
-  const toggleTrackPlay = (id: string) => {
-    if (activeTrack === id) {
-      setIsPlaying(!isPlaying);
+  // ---- Click handlers: audio starts HERE so browsers allow it ----
+
+  const startTrack = (id: TrackId) => {
+    void getEngine().play(id);
+    setSelectedTrack(id);
+    setCurrentTimeSec(0);
+    setIsPlaying(true);
+  };
+
+  const pause = () => {
+    engineRef.current?.stop();
+    setIsPlaying(false);
+  };
+
+  const togglePlay = () => {
+    if (isPlaying) {
+      pause();
     } else {
-      setSelectedTrack(id);
-      setCurrentTimeSec(0);
+      void getEngine().play(currentTrack.id);
       setIsPlaying(true);
+    }
+  };
+
+  const toggleTrackPlay = (id: TrackId) => {
+    if (activeTrack === id) {
+      togglePlay();
+    } else {
+      startTrack(id);
     }
   };
 
@@ -299,7 +232,7 @@ export function SerenityAudioPlayer() {
 
           <button
             type="button"
-            onClick={() => setIsPlaying(!isPlaying)}
+            onClick={togglePlay}
             aria-label={isPlaying ? 'Pause' : 'Play'}
             className="w-13 h-13 rounded-full bg-white text-[#634469] flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
           >
@@ -319,6 +252,31 @@ export function SerenityAudioPlayer() {
             <RotateCw className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Volume */}
+        <div className="flex items-center gap-3 pt-1 px-1">
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? 'Unmute' : 'Mute'}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+          >
+            {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={muted ? 0 : volume}
+            onChange={(e) => {
+              setVolume(Number(e.target.value));
+              setMuted(false);
+            }}
+            aria-label="Volume"
+            className="w-full h-1.5 accent-[#F6B89E] cursor-pointer"
+          />
+        </div>
       </div>
 
       {/* Lower White Card: List of Music */}
@@ -326,12 +284,12 @@ export function SerenityAudioPlayer() {
         <div className="flex items-center justify-between pb-1 border-b border-[#F2E8F0]">
           <h4 className="font-serif text-base font-bold text-[#2A162B]">List of music</h4>
           <span className="text-[10px] font-bold text-[#8E738E] bg-[#F7EFF6] px-2.5 py-0.5 rounded-full">
-            {tracks.length} Tracks
+            {TRACKS.length} Tracks
           </span>
         </div>
 
         <div className="space-y-1.5">
-          {tracks.map((track) => {
+          {TRACKS.map((track) => {
             const isSelected = activeTrack === track.id;
             return (
               <div
