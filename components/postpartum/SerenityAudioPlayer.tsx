@@ -93,7 +93,7 @@ export function SerenityAudioPlayer() {
     engineRef.current?.setVolume(muted ? 0 : volume);
   }, [volume, muted]);
 
-  // 1-second playback timer (soundscapes loop forever)
+  // 1-second playback timer
   useEffect(() => {
     if (!isPlaying) return;
     const timer = setInterval(() => {
@@ -179,159 +179,163 @@ export function SerenityAudioPlayer() {
   );
 
   return (
-    <section className="bg-gradient-to-b from-[#6A4B72] via-[#5A3B60] to-[#462B4A] rounded-[32px] p-6 text-white shadow-xl relative overflow-hidden space-y-6">
+    // Phones/tablets: stacked. Wide screens (xl+): player on the left, track list on the right.
+    <section className="bg-gradient-to-b from-[#6A4B72] via-[#5A3B60] to-[#462B4A] rounded-[32px] p-5 text-white shadow-xl relative overflow-hidden flex flex-col xl:flex-row gap-4 xl:gap-5">
       {/* Background ambient lotus glow */}
       <div className="absolute -top-16 -right-16 w-60 h-60 rounded-full bg-[#A25F88]/30 blur-3xl pointer-events-none"></div>
 
-      {/* Top Header */}
-      <div className="flex items-center justify-between relative z-10">
-        <span className="text-[10px] uppercase font-bold tracking-widest text-[#E6CDDF] bg-white/10 px-3 py-1 rounded-full border border-white/15">
-          SERENITY RHYTHMS
-        </span>
-        <button
-          onClick={() => toggleFavoriteTrack(currentTrack.id)}
-          aria-label="Favorite Track"
-          className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
-        >
-          <Heart className={`w-4 h-4 ${isFavorited ? 'fill-[#E888B4] text-[#E888B4]' : 'text-white'}`} />
-        </button>
-      </div>
-
-      {/* Featured Blooming Lotus Centerpiece */}
-      <div className="flex flex-col items-center text-center py-2 relative z-10 space-y-3">
-        <div className="relative w-28 h-28 flex items-center justify-center">
-          <div
-            className={`absolute inset-0 bg-[#DE85B0]/30 rounded-full blur-2xl ${
-              isPlaying ? 'animate-pulse scale-110' : ''
-            } transition-transform`}
-          ></div>
-          <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#9B5584] to-[#BA78A3] p-1 shadow-lg flex items-center justify-center border-2 border-white/30">
-            <LotusIcon className="w-14 h-14 text-white drop-shadow-md" />
-          </div>
+      {/* LEFT: now playing + controls */}
+      <div className="relative z-10 flex flex-col gap-3 xl:flex-1 xl:min-w-0 xl:min-h-0 xl:justify-between">
+        {/* Top Header */}
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase font-bold tracking-widest text-[#E6CDDF] bg-white/10 px-3 py-1 rounded-full border border-white/15">
+            SERENITY RHYTHMS
+          </span>
+          <button
+            onClick={() => toggleFavoriteTrack(currentTrack.id)}
+            aria-label="Favorite Track"
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <Heart className={`w-4 h-4 ${isFavorited ? 'fill-[#E888B4] text-[#E888B4]' : 'text-white'}`} />
+          </button>
         </div>
 
-        <div className="space-y-0.5">
-          <h3 className="font-serif text-2xl font-bold tracking-tight text-white">
-            {currentTrack.title}
-          </h3>
-          <p className="text-xs text-[#DCC7D9] font-medium">
-            Materna Maternal Sanctuary • {currentTrack.category}
-          </p>
-        </div>
-      </div>
-
-      {/* Audio Scrubber & Controls */}
-      <div className="space-y-3 relative z-10">
-        <div className="space-y-1">
-          <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+        {/* Centerpiece */}
+        <div className="flex flex-col items-center text-center gap-1 xl:flex-row xl:text-left xl:gap-3">
+          <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
             <div
-              className="bg-gradient-to-r from-[#F6B89E] to-[#E888B4] h-full rounded-full transition-all duration-300"
-              style={{ width: `${progressPct}%` }}
+              className={`absolute inset-0 bg-[#DE85B0]/30 rounded-full blur-xl ${
+                isPlaying ? 'animate-pulse scale-110' : ''
+              } transition-transform`}
             ></div>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#9B5584] to-[#BA78A3] p-1 shadow-lg flex items-center justify-center border-2 border-white/30">
+              <LotusIcon className="w-7 h-7 text-white drop-shadow-md" />
+            </div>
           </div>
-          <div className="flex justify-between text-[10px] text-[#D8BDD4] font-medium px-0.5">
-            <span>{formatTime(currentTimeSec)}</span>
-            <span>{currentTrack.duration} mins</span>
+
+          <div className="min-w-0">
+            <h3 className="font-serif text-lg font-bold tracking-tight text-white leading-tight">
+              {currentTrack.title}
+            </h3>
+            <p className="text-[11px] text-[#DCC7D9] font-medium leading-tight xl:truncate">
+              <span className="xl:hidden">Materna Maternal Sanctuary • </span>
+              {currentTrack.category}
+            </p>
           </div>
         </div>
 
-        {/* Playback Controls */}
-        <div className="flex items-center justify-center gap-6 pt-1">
-          <button
-            type="button"
-            onClick={handlePrevious}
-            aria-label="Previous track"
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <SkipBack className="w-4 h-4" />
-          </button>
+        {/* Progress, Controls & Volume */}
+        <div className="space-y-2">
+          <div className="space-y-1">
+            <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-[#F6B89E] to-[#E888B4] h-full rounded-full transition-all duration-300"
+                style={{ width: `${progressPct}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[10px] text-[#D8BDD4] font-medium px-0.5">
+              <span>{formatTime(currentTimeSec)}</span>
+              <span>{currentTrack.duration} mins</span>
+            </div>
+          </div>
 
-          <button
-            type="button"
-            onClick={togglePlay}
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-            className="w-13 h-13 rounded-full bg-white text-[#634469] flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
-          >
-            {isPlaying ? (
-              <Pause className="w-6 h-6 fill-current" />
-            ) : (
-              <Play className="w-6 h-6 fill-current ml-0.5" />
-            )}
-          </button>
+          <div className="flex items-center justify-center gap-5">
+            <button
+              type="button"
+              onClick={handlePrevious}
+              aria-label="Previous track"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <SkipBack className="w-4 h-4" />
+            </button>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            aria-label="Next track"
-            className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
-          >
-            <SkipForward className="w-4 h-4" />
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={togglePlay}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+              className="w-11 h-11 rounded-full bg-white text-[#634469] flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 fill-current" />
+              ) : (
+                <Play className="w-5 h-5 fill-current ml-0.5" />
+              )}
+            </button>
 
-        {/* Volume */}
-        <div className="flex items-center gap-3 pt-1 px-1">
-          <button
-            type="button"
-            onClick={() => setMuted((m) => !m)}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer shrink-0"
-          >
-            {muted || volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-          </button>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.01}
-            value={muted ? 0 : volume}
-            onChange={(e) => {
-              setVolume(Number(e.target.value));
-              setMuted(false);
-            }}
-            aria-label="Volume"
-            className="w-full h-1.5 accent-[#F6B89E] cursor-pointer"
-          />
+            <button
+              type="button"
+              onClick={handleNext}
+              aria-label="Next track"
+              className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <SkipForward className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Volume (pb-2 = padding below the slider; try pb-3 or pb-4 for more) */}
+          <div className="flex items-center gap-2 px-1 pb-2">
+            <button
+              type="button"
+              onClick={() => setMuted((m) => !m)}
+              aria-label={muted ? 'Unmute' : 'Mute'}
+              className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 text-[#E8D4E6] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            >
+              {muted || volume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={muted ? 0 : volume}
+              onChange={(e) => {
+                setVolume(Number(e.target.value));
+                setMuted(false);
+              }}
+              aria-label="Volume"
+              className="w-full h-1.5 accent-[#F6B89E] cursor-pointer"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Lower White Card: List of Music */}
-      <div className="bg-white rounded-[26px] p-5 text-[#2A162B] shadow-md space-y-3 relative z-10">
-        <div className="flex items-center justify-between pb-1 border-b border-[#F2E8F0]">
-          <h4 className="font-serif text-base font-bold text-[#2A162B]">List of music</h4>
-          <span className="text-[10px] font-bold text-[#8E738E] bg-[#F7EFF6] px-2.5 py-0.5 rounded-full">
+      {/* RIGHT: list of music (scrolls inside the card on wide screens) */}
+      <div className="flex flex-col gap-3 relative z-10 border-t border-white/10 pt-4 xl:border-t-0 xl:pt-1 xl:border-l xl:pl-5 xl:w-[48%] xl:shrink-0 xl:min-h-0">
+        <div className="flex items-center justify-between pb-1 border-b border-white/15">
+          <h4 className="font-serif text-base font-bold text-white">List of music</h4>
+          <span className="text-[10px] font-bold text-[#E6CDDF] bg-white/10 px-2.5 py-0.5 rounded-full">
             {TRACKS.length} Tracks
           </span>
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 xl:flex-1 xl:min-h-0 xl:overflow-y-auto">
           {TRACKS.map((track) => {
             const isSelected = activeTrack === track.id;
             return (
               <div
                 key={track.id}
                 onClick={() => toggleTrackPlay(track.id)}
-                className={`flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer ${
+                className={`flex items-center justify-between gap-2 p-2 rounded-2xl transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#F9EFF6] border border-[#ECDDEC]'
-                    : 'hover:bg-[#FAF5FA]'
+                    ? 'bg-white/15 border border-white/20'
+                    : 'border border-transparent hover:bg-white/10'
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-full ${track.iconBg} text-white flex items-center justify-center shadow-xs shrink-0`}>
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className={`w-8 h-8 rounded-full ${track.iconBg} text-white flex items-center justify-center shadow-xs shrink-0`}>
                     <LotusIcon className="w-4 h-4" />
                   </div>
-                  <div>
-                    <div className={`text-xs font-bold flex items-center gap-1.5 ${isSelected ? 'text-[#9E4875]' : 'text-[#2C182D]'}`}>
-                      <span>{track.title}</span>
+                  <div className="min-w-0">
+                    <div className={`text-xs font-bold flex items-center gap-1.5 ${isSelected ? 'text-[#F6B89E]' : 'text-white'}`}>
+                      <span className="leading-tight">{track.title}</span>
                       {favoriteTracks.includes(track.id) && (
-                        <Heart className="w-3 h-3 fill-[#E888B4] text-[#E888B4]" />
+                        <Heart className="w-3 h-3 fill-[#E888B4] text-[#E888B4] shrink-0" />
                       )}
                     </div>
-                    <div className="text-[10px] text-[#8C728C] flex items-center gap-1">
-                      <span>{track.duration} mins</span>
-                      <span>•</span>
-                      <span>{track.category}</span>
+                    <div className="text-[10px] text-[#D8BDD4] flex items-center gap-1">
+                      <span className="shrink-0">{track.duration} mins</span>
+                      <span className="xl:hidden">•</span>
+                      <span className="truncate xl:hidden">{track.category}</span>
                     </div>
                   </div>
                 </div>
@@ -339,10 +343,10 @@ export function SerenityAudioPlayer() {
                 <button
                   type="button"
                   aria-label={`Play ${track.title}`}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors ${
                     isSelected && isPlaying
-                      ? 'bg-[#9E4875] text-white'
-                      : 'bg-[#F4EAF3] text-[#69486F] hover:bg-[#EBDDE9]'
+                      ? 'bg-[#E888B4] text-white'
+                      : 'bg-white/10 text-[#E8D4E6] hover:bg-white/20'
                   }`}
                 >
                   {isSelected && isPlaying ? (
