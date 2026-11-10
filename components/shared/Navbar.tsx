@@ -55,6 +55,7 @@ export function Navbar() {
 
   const postData = calculatePostpartumAge(profile.baby_birth_date);
   const babyName = profile.baby_name || 'Baby';
+  const motherInitial = (profile.full_name?.trim()?.[0] ?? 'M').toUpperCase();
 
   // Dynamic Notification Insights
   const wakeWindowMins = postData.recommendedWakeWindowMins || 75;
@@ -134,8 +135,8 @@ export function Navbar() {
         <div className="flex items-center gap-3">
           <Link href="/profile" className="relative group shrink-0">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#DE9FA8] to-[#FCD9CE] p-0.5 shadow-sm border border-white">
-              <div className="w-full h-full rounded-full bg-white/90 flex items-center justify-center text-lg select-none">
-                🤱
+              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#9E4875] to-[#DF6385] text-white flex items-center justify-center font-serif text-base font-bold select-none">
+                {motherInitial}
               </div>
             </div>
             <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#78A890] ring-2 ring-white"></span>

@@ -33,6 +33,9 @@ export default function ProfilePage() {
   const babyName = babyNameDraft ?? (profile.baby_name || 'Baby');
   const babyBirthDate = birthDateDraft ?? (profile.baby_birth_date || '');
 
+  // First letter of the mother's name, used for the avatar badge
+  const motherInitial = (profile.full_name?.trim()?.[0] ?? 'M').toUpperCase();
+
   const handleSignOut = async () => {
     await signOut();
     router.push('/login');
@@ -78,8 +81,11 @@ export default function ProfilePage() {
         <div className="lg:col-span-5 space-y-6">
           {/* Profile Header Card */}
           <section className="bg-gradient-to-br from-[#FFE8DE] via-[#FCE4EF] to-white rounded-[32px] p-6 border border-[#EFE3EE] shadow-[0_8px_30px_rgba(140,80,120,0.06)] flex items-center gap-4 relative overflow-hidden">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#9E4875] to-[#DF6385] text-white flex items-center justify-center text-3xl shadow-md shrink-0 border-2 border-white">
-              🤱
+            <div
+              aria-hidden="true"
+              className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#9E4875] to-[#DF6385] text-white flex items-center justify-center font-serif text-2xl font-bold shadow-md shrink-0 border-2 border-white select-none"
+            >
+              {motherInitial}
             </div>
             <div>
               <div className="text-[10px] font-bold text-[#8F7292] uppercase tracking-wider flex items-center gap-1">
