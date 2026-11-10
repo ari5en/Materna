@@ -185,7 +185,7 @@ export function SerenityAudioPlayer() {
       <div className="absolute -top-16 -right-16 w-60 h-60 rounded-full bg-[#A25F88]/30 blur-3xl pointer-events-none"></div>
 
       {/* LEFT: now playing + controls */}
-      <div className="relative z-10 flex flex-col gap-3 xl:flex-1 xl:min-w-0 xl:min-h-0 xl:justify-between">
+      <div className="relative z-10 flex flex-col gap-3 xl:gap-2 xl:flex-1 xl:min-w-0 xl:min-h-0 xl:justify-between">
         {/* Top Header */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] uppercase font-bold tracking-widest text-[#E6CDDF] bg-white/10 px-3 py-1 rounded-full border border-white/15">
@@ -202,14 +202,14 @@ export function SerenityAudioPlayer() {
 
         {/* Centerpiece */}
         <div className="flex flex-col items-center text-center gap-1 xl:flex-row xl:text-left xl:gap-3">
-          <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
+          <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
             <div
               className={`absolute inset-0 bg-[#DE85B0]/30 rounded-full blur-xl ${
                 isPlaying ? 'animate-pulse scale-110' : ''
               } transition-transform`}
             ></div>
-            <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-[#9B5584] to-[#BA78A3] p-1 shadow-lg flex items-center justify-center border-2 border-white/30">
-              <LotusIcon className="w-7 h-7 text-white drop-shadow-md" />
+            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#9B5584] to-[#BA78A3] p-1 shadow-lg flex items-center justify-center border-2 border-white/30">
+              <LotusIcon className="w-6 h-6 text-white drop-shadow-md" />
             </div>
           </div>
 
@@ -225,7 +225,7 @@ export function SerenityAudioPlayer() {
         </div>
 
         {/* Progress, Controls & Volume */}
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="space-y-1">
             <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
               <div
@@ -253,7 +253,7 @@ export function SerenityAudioPlayer() {
               type="button"
               onClick={togglePlay}
               aria-label={isPlaying ? 'Pause' : 'Play'}
-              className="w-11 h-11 rounded-full bg-white text-[#634469] flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="w-10 h-10 rounded-full bg-white text-[#634469] flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               {isPlaying ? (
                 <Pause className="w-5 h-5 fill-current" />
@@ -272,8 +272,7 @@ export function SerenityAudioPlayer() {
             </button>
           </div>
 
-          {/* Volume (pb-2 = padding below the slider; try pb-3 or pb-4 for more) */}
-          <div className="flex items-center gap-2 px-1 pb-2">
+          <div className="flex items-center gap-2 px-1 pb-3">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
