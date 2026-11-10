@@ -273,19 +273,22 @@ export class SerenityEngine {
     const n = this.noise('pink');
     const bp = ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.value = 1100;
-    bp.Q.value = 0.8;
+    bp.frequency.value = 800;
+    bp.Q.value = 0.5;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 2200; // cuts the harsh high frequencies
     const g = ctx.createGain();
-    g.gain.value = 1.1;
-    this.chain(n, bp, g);
-    this.lfo(3.1, 350, bp.frequency);
-    this.lfo(0.7, 0.25, g.gain);
+    g.gain.value = 0.6;
+    this.chain(n, bp, lp, g);
+    this.lfo(3.1, 200, bp.frequency);
+    this.lfo(0.7, 0.12, g.gain);
 
-    const scale = [72, 74, 76, 79, 81]; // C major pentatonic
+    const scale = [67, 69, 72, 74, 76]; // C pentatonic, one octave lower (softer)
     const rev = this.echo();
     this.timers.push(
       window.setInterval(() => {
-        this.tone(midi(scale[Math.floor(Math.random() * scale.length)]), 2.5, 0.12, 'sine', rev);
+        this.tone(midi(scale[Math.floor(Math.random() * scale.length)]), 2.5, 0.07, 'sine', rev);
       }, 2200)
     );
   }
@@ -347,15 +350,15 @@ export class SerenityEngine {
   // t-5 Peaceful Rain: patter + low warm drone
   private rain() {
     const ctx = this.ctx!;
-    const n = this.noise('white');
+    const n = this.noise('pink');
     const hp = ctx.createBiquadFilter();
     hp.type = 'highpass';
-    hp.frequency.value = 900;
+    hp.frequency.value = 250;
     const lp = ctx.createBiquadFilter();
     lp.type = 'lowpass';
-    lp.frequency.value = 7000;
+    lp.frequency.value = 2800; // cuts the harsh hiss
     const g = ctx.createGain();
-    g.gain.value = 0.55;
+    g.gain.value = 0.5;
     this.chain(n, hp, lp, g);
 
     const drone = this.keep(ctx.createOscillator());
@@ -369,8 +372,8 @@ export class SerenityEngine {
 
     this.timers.push(
       window.setInterval(() => {
-        if (Math.random() > 0.6) this.tone(1500 + Math.random() * 2500, 0.08, 0.05, 'sine');
-      }, 180)
+        if (Math.random() > 0.7) this.tone(900 + Math.random() * 1200, 0.1, 0.025, 'sine');
+      }, 260)
     );
   }
 }
