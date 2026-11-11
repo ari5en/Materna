@@ -1,4 +1,4 @@
- 'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
@@ -33,7 +33,7 @@ export function HeroGreeting() {
   // States
   const [selectedWeek, setSelectedWeek] = useState<number>(currentWeek);
   const [activeMonth, setActiveMonth] = useState<number>(2); // Default Month 2 (covers Week 6)
-  const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('imperial');
+  const [unitSystem, setUnitSystem] = useState<'imperial' | 'metric'>('metric'); // cm / kg by default
   const [viewMode, setViewMode] = useState<'month' | 'all'>('month');
   const [celebrated, setCelebrated] = useState(false);
   const [todayFormatted, setTodayFormatted] = useState('Today, Sun, Nov 1, 2026');
@@ -174,19 +174,8 @@ export function HeroGreeting() {
                 </h2>
               </div>
 
-              {/* Unit Toggle: Imperial vs Metric */}
+              {/* Unit Toggle: Metric (default) first, then Imperial */}
               <div className="flex items-center bg-[#F7EDF5] p-0.5 rounded-full border border-[#EBE0EC] text-[11px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setUnitSystem('imperial')}
-                  className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
-                    unitSystem === 'imperial'
-                      ? 'bg-white text-[#9E4875] shadow-2xs'
-                      : 'text-[#876888] hover:text-[#2A162B]'
-                  }`}
-                >
-                  in / lbs
-                </button>
                 <button
                   type="button"
                   onClick={() => setUnitSystem('metric')}
@@ -197,6 +186,17 @@ export function HeroGreeting() {
                   }`}
                 >
                   cm / kg
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUnitSystem('imperial')}
+                  className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                    unitSystem === 'imperial'
+                      ? 'bg-white text-[#9E4875] shadow-2xs'
+                      : 'text-[#876888] hover:text-[#2A162B]'
+                  }`}
+                >
+                  in / lbs
                 </button>
               </div>
             </div>
