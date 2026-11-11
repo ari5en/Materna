@@ -10,7 +10,6 @@ import {
   HeartPulse,
   Smile,
   Sparkles,
-  SlidersHorizontal,
   Moon,
   Droplets,
   Baby,
@@ -55,6 +54,7 @@ export function Navbar() {
 
   const postData = calculatePostpartumAge(profile.baby_birth_date);
   const babyName = profile.baby_name || 'Baby';
+  // First letter of the mother's name, shown in the avatar badge
   const motherInitial = (profile.full_name?.trim()?.[0] ?? 'M').toUpperCase();
 
   // Dynamic Notification Insights
@@ -131,7 +131,7 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-30 w-full bg-[#F8F3F7]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-3 border-b border-[#EFE3EE]/80 transition-all">
       <div className="max-w-6xl mx-auto flex items-center justify-between relative">
-        {/* Left: Mother Avatar & Brand Tag */}
+        {/* Left: Mother Avatar (initial) & Brand */}
         <div className="flex items-center gap-3">
           <Link href="/profile" className="relative group shrink-0">
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#DE9FA8] to-[#FCD9CE] p-0.5 shadow-sm border border-white">
@@ -178,7 +178,7 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right Actions: Ask AI + Notifications + Settings */}
+        {/* Right Actions: Ask AI + Notifications */}
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setIsAiChatOpen(true)}
@@ -203,13 +203,6 @@ export function Navbar() {
             )}
           </button>
 
-          <Link
-            href="/profile"
-            aria-label="Profile and Settings"
-            className="w-9 h-9 rounded-full bg-[#F3E7F2] text-[#69486F] flex items-center justify-center hover:bg-[#EBDCE9] transition-colors shadow-2xs border border-[#E8DAE7]"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-          </Link>
         </div>
 
         {/* Live Sanctuary Reminders Popover */}
