@@ -6,10 +6,25 @@ import { Baby, CheckCircle2, Edit3, Check, History, Trash2, ChevronDown, Chevron
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { calculatePostpartumAge } from '@/lib/utils';
 import { BABY_52_WEEKS } from '@/lib/data/babyMilestones52';
+import {
+  type UnitSystem,
+  weightFromLbs,
+  lengthFromIn,
+  weightToLbs,
+  lengthToIn,
+  weightUnitLabel,
+  lengthUnitLabel,
+  kgToLbs,
+  lbsToKg,
+  cmToIn,
+  inToCm,
+  round1,
+} from '@/lib/units';
 
 /**
  * Estimates an infant growth percentile (5th–99th) from the ratio between the
  * logged value and the WHO median for the baby's current week.
+ * (Always computed with lbs / inches, so it does not depend on the unit shown.)
  */
 function estimatePercentile(value: number | null | undefined, median: number, cv = 0.12): number | null {
   if (value === null || value === undefined || !Number.isFinite(value) || median <= 0) {
@@ -42,14 +57,37 @@ export function NewbornGrowthMilestones() {
   const weekReference =
     BABY_52_WEEKS.find((w) => w.week === currentWeek) || BABY_52_WEEKS[5];
 
+  // Unit toggle: cm / kg is the default
+  const [unit, setUnit] = useState<UnitSystem>('metric');
+  const isMetric = unit === 'metric';
+  const wUnit = weightUnitLabel(unit);
+  const lUnit = lengthUnitLabel(unit);
+
+  // Stored values are always lbs / inches
   const latestLogged = growthMeasurements[0];
   const rawWeight = profile.baby_weight_lbs ?? latestLogged?.weight_lbs ?? null;
   const rawLength = profile.baby_length_in ?? latestLogged?.length_in ?? null;
   const rawHead = profile.baby_head_in ?? latestLogged?.head_in ?? null;
 
-  const displayWeight = rawWeight ?? weekReference.weightLbs;
-  const displayLength = rawLength ?? weekReference.lengthInches;
-  const displayHead = rawHead ?? weekReference.headCircInches;
+  // What we show: converted logged value, or the reference value for this week
+  const displayWeight =
+    rawWeight !== null
+      ? weightFromLbs(rawWeight, unit)
+      : isMetric
+      ? weekReference.weightKg
+      : weekReference.weightLbs;
+  const displayLength =
+    rawLength !== null
+      ? lengthFromIn(rawLength, unit)
+      : isMetric
+      ? weekReference.lengthCm
+      : weekReference.lengthInches;
+  const displayHead =
+    rawHead !== null
+      ? lengthFromIn(rawHead, unit)
+      : isMetric
+      ? weekReference.headCircCm
+      : weekReference.headCircInches;
 
   const weightPct = estimatePercentile(rawWeight, weekReference.weightLbs, 0.13);
   const lengthPct = estimatePercentile(rawLength, weekReference.lengthInches, 0.04);
@@ -88,12 +126,37 @@ export function NewbornGrowthMilestones() {
     }
   };
 
+  // Switch units. If the form is open, convert what was already typed.
+  const handleUnitChange = (next: UnitSystem) => {
+    if (next === unit) return;
+    if (isEditingStats) {
+      const convert = (value: string, fn: (n: number) => number) => {
+        const n = parseFloat(value);
+        return Number.isFinite(n) ? String(round1(fn(n))) : value;
+      };
+      if (next === 'metric') {
+        setWeightInput(convert(weightInput, lbsToKg));
+        setLengthInput(convert(lengthInput, inToCm));
+        setHeadInput(convert(headInput, inToCm));
+      } else {
+        setWeightInput(convert(weightInput, kgToLbs));
+        setLengthInput(convert(lengthInput, cmToIn));
+        setHeadInput(convert(headInput, cmToIn));
+      }
+    }
+    setUnit(next);
+  };
+
+  // Convert what the mother typed (kg / cm or lbs / in) back to lbs / in for the database
   const handleSaveStats = async (e: React.FormEvent) => {
     e.preventDefault();
+    const w = parseFloat(weightInput);
+    const l = parseFloat(lengthInput);
+    const h = parseFloat(headInput);
     await addGrowthMeasurement({
-      weight_lbs: parseFloat(weightInput) || weekReference.weightLbs,
-      length_in: parseFloat(lengthInput) || weekReference.lengthInches,
-      head_in: parseFloat(headInput) || weekReference.headCircInches,
+      weight_lbs: w ? weightToLbs(w, unit) : weekReference.weightLbs,
+      length_in: l ? lengthToIn(l, unit) : weekReference.lengthInches,
+      head_in: h ? lengthToIn(h, unit) : weekReference.headCircInches,
     });
     setIsEditingStats(false);
   };
@@ -101,7 +164,7 @@ export function NewbornGrowthMilestones() {
   return (
     <section className="bg-white rounded-[32px] p-6 border border-[#EFE3EE] shadow-[0_8px_30px_rgba(140,80,120,0.05)] space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full bg-[#F5EAF4] text-[#7B4C7A] flex items-center justify-center shadow-2xs">
             <Baby className="w-4.5 h-4.5" />
@@ -116,19 +179,43 @@ export function NewbornGrowthMilestones() {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setWeightInput(String(displayWeight));
-            setLengthInput(String(displayLength));
-            setHeadInput(String(displayHead));
-            setIsEditingStats((v) => !v);
-          }}
-          className="text-[10px] font-semibold bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#784776] px-3 py-1 rounded-full shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
-        >
-          <Edit3 className="w-3 h-3" />
-          <span>{isEditingStats ? 'Close' : 'Update Growth'}</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Unit toggle: cm / kg first (default), in / lbs second */}
+          <div className="flex items-center bg-[#F7EDF5] p-0.5 rounded-full border border-[#EBE0EC] text-[10px] font-semibold">
+            <button
+              type="button"
+              onClick={() => handleUnitChange('metric')}
+              className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                isMetric ? 'bg-white text-[#9E4875] shadow-2xs' : 'text-[#876888] hover:text-[#2A162B]'
+              }`}
+            >
+              cm / kg
+            </button>
+            <button
+              type="button"
+              onClick={() => handleUnitChange('imperial')}
+              className={`px-2.5 py-1 rounded-full transition-all cursor-pointer ${
+                !isMetric ? 'bg-white text-[#9E4875] shadow-2xs' : 'text-[#876888] hover:text-[#2A162B]'
+              }`}
+            >
+              in / lbs
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setWeightInput(String(displayWeight));
+              setLengthInput(String(displayLength));
+              setHeadInput(String(displayHead));
+              setIsEditingStats((v) => !v);
+            }}
+            className="text-[10px] font-semibold bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#784776] px-3 py-1 rounded-full shadow-2xs flex items-center gap-1 cursor-pointer transition-colors"
+          >
+            <Edit3 className="w-3 h-3" />
+            <span>{isEditingStats ? 'Close' : 'Update Growth'}</span>
+          </button>
+        </div>
       </div>
 
       {/* Inline Edit Growth Measurements Form */}
@@ -137,7 +224,7 @@ export function NewbornGrowthMilestones() {
           <div className="text-xs font-bold text-[#5D415F]">Log Pediatric Measurements</div>
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Weight (lbs)</label>
+              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Weight ({wUnit})</label>
               <input
                 type="number"
                 step="0.1"
@@ -147,7 +234,7 @@ export function NewbornGrowthMilestones() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Length (in)</label>
+              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Length ({lUnit})</label>
               <input
                 type="number"
                 step="0.1"
@@ -157,7 +244,7 @@ export function NewbornGrowthMilestones() {
               />
             </div>
             <div>
-              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Head (in)</label>
+              <label className="text-[10px] font-semibold text-[#8C728C] block mb-1">Head ({lUnit})</label>
               <input
                 type="number"
                 step="0.1"
@@ -179,21 +266,27 @@ export function NewbornGrowthMilestones() {
         <div className="grid grid-cols-3 gap-2.5 bg-[#FAF4F9] p-3.5 rounded-2xl border border-[#EFE2EE]">
           <div className="text-center">
             <div className="text-[10px] font-semibold text-[#8C728C]">Weight</div>
-            <div className="font-serif text-base font-bold text-[#2A162B]">{displayWeight} lbs</div>
+            <div className="font-serif text-base font-bold text-[#2A162B]">
+              {displayWeight} {wUnit}
+            </div>
             <div className="text-[9px] text-[#9E4875] font-bold">
               {weightPct !== null ? `${ordinal(weightPct)} %ile` : `Wk ${currentWeek} Avg`}
             </div>
           </div>
           <div className="text-center border-x border-[#E8D7E7]">
             <div className="text-[10px] font-semibold text-[#8C728C]">Length</div>
-            <div className="font-serif text-base font-bold text-[#2A162B]">{displayLength} in</div>
+            <div className="font-serif text-base font-bold text-[#2A162B]">
+              {displayLength} {lUnit}
+            </div>
             <div className="text-[9px] text-[#9E4875] font-bold">
               {lengthPct !== null ? `${ordinal(lengthPct)} %ile` : `Wk ${currentWeek} Avg`}
             </div>
           </div>
           <div className="text-center">
             <div className="text-[10px] font-semibold text-[#8C728C]">Head Circ.</div>
-            <div className="font-serif text-base font-bold text-[#2A162B]">{displayHead} in</div>
+            <div className="font-serif text-base font-bold text-[#2A162B]">
+              {displayHead} {lUnit}
+            </div>
             <div className="text-[9px] text-[#9E4875] font-bold">
               {headPct !== null ? `${ordinal(headPct)} %ile` : `Wk ${currentWeek} Avg`}
             </div>
@@ -226,7 +319,9 @@ export function NewbornGrowthMilestones() {
                   <div className="text-[#2A162B] font-semibold">
                     <span className="text-[#8C728C] mr-2">{g.measured_on}</span>
                     <span>
-                      {g.weight_lbs ?? '—'} lbs • {g.length_in ?? '—'} in • {g.head_in ?? '—'} in
+                      {g.weight_lbs != null ? weightFromLbs(g.weight_lbs, unit) : '—'} {wUnit} •{' '}
+                      {g.length_in != null ? lengthFromIn(g.length_in, unit) : '—'} {lUnit} •{' '}
+                      {g.head_in != null ? lengthFromIn(g.head_in, unit) : '—'} {lUnit}
                     </span>
                   </div>
                   <button
