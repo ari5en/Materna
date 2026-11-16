@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, TrendingUp, BookOpen, Trash2 } from 'lucide-react';
+import { Check, TrendingUp, BookOpen, Trash2, Edit3, ChevronRight, X } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
+import { calculateWeeklyMoodMomentum } from '@/lib/utils';
 import { LotusIcon } from '../shared/LotusIcon';
+import type { MaternalMoodLog } from '@/types/database';
 
 interface MoodOption {
   score: number;
@@ -15,15 +17,45 @@ interface MoodOption {
 }
 
 export function MaternalMoodReflection() {
-  const { moodLogs, addMoodLog, deleteMoodLog } = useMaterna();
+  const { moodLogs, addMoodLog, updateMoodLog, deleteMoodLog } = useMaterna();
   const [selectedScore, setSelectedScore] = useState<number>(4); // Default: Grounded
   const [selectedTags, setSelectedTags] = useState<string[]>([
     "Baby's Feeding",
     'Sleep Deprivation',
   ]);
-  const [showNoteInput, setShowNoteInput] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [isSaved, setIsSaved] = useState(false);
+
+  // Pop-up Mood History Dialog & inline edit states
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [editingMoodId, setEditingMoodId] = useState<string | null>(null);
+  const [editScore, setEditScore] = useState<number>(4);
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [editNote, setEditNote] = useState<string>('');
+
+  const startEditMood = (item: MaternalMoodLog) => {
+    setEditingMoodId(item.id);
+    setEditScore(item.score);
+    setEditTags(item.tags || []);
+    setEditNote(item.notes || '');
+  };
+
+  const toggleEditTag = (tag: string) => {
+    setEditTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const handleSaveEditedMood = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMoodId) return;
+    await updateMoodLog(editingMoodId, {
+      score: editScore,
+      tags: editTags,
+      notes: editNote.trim() || undefined,
+    });
+    setEditingMoodId(null);
+  };
 
   const moodOptions: MoodOption[] = [
     {
@@ -94,21 +126,17 @@ export function MaternalMoodReflection() {
 
   const currentOption = moodOptions.find((m) => m.score === selectedScore) || moodOptions[3];
 
-  // Dynamic Mood Statistics Computed from moodLogs
-  const totalCheckIns = moodLogs.length;
-  const happyCount = moodLogs.filter((m) => m.score >= 4).length;
-  const calmCount = moodLogs.filter((m) => m.score === 3).length;
-  const fragileCount = moodLogs.filter((m) => m.score <= 2).length;
-
-  const happyPct = totalCheckIns > 0 ? Math.round((happyCount / totalCheckIns) * 100) : 65;
-  const calmPct = totalCheckIns > 0 ? Math.round((calmCount / totalCheckIns) * 100) : 20;
-  const fragilePct = totalCheckIns > 0 ? Math.max(0, 100 - happyPct - calmPct) : 15;
-
-  const avgMoodScore =
-    totalCheckIns > 0
-      ? moodLogs.reduce((acc, m) => acc + m.score, 0) / totalCheckIns
-      : 4.0;
-  const heartWellnessPct = Math.min(100, Math.max(20, Math.round((avgMoodScore / 5) * 100)));
+  // Recency-Weighted Weekly Momentum Index (resets Mondays at 12:00 AM, EMA alpha = 0.4)
+  const {
+    percentage: heartWellnessPct,
+    emaScore,
+    weeklyCheckIns,
+    happyPct,
+    calmPct,
+    fragilePct,
+    dominantLabel,
+    hasLogsThisWeek,
+  } = calculateWeeklyMoodMomentum(moodLogs, { alpha: 0.4 });
 
   // SVG Donut Circumference for r=38 is 2 * PI * 38 = 238.76
   const C = 238.76;
@@ -118,15 +146,6 @@ export function MaternalMoodReflection() {
 
   const calmOffset = -fragileDash;
   const happyOffset = -(fragileDash + calmDash);
-
-  const dominantLabel =
-    happyPct >= calmPct && happyPct >= fragilePct
-      ? 'Grounded'
-      : calmPct >= fragilePct
-      ? 'Balanced'
-      : 'Tender';
-
-  const recentNotes = moodLogs.slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -179,12 +198,20 @@ export function MaternalMoodReflection() {
 
           <div className="mt-3 space-y-0.5">
             <h3 className="font-serif text-xl font-bold text-[#2E182F]">
-              {heartWellnessPct >= 70 ? 'Keep going!' : 'Be gentle with yourself'}
+              {!hasLogsThisWeek
+                ? 'Fresh Week Ahead'
+                : heartWellnessPct >= 70
+                ? 'Keep going!'
+                : 'Be gentle with yourself'}
             </h3>
             <p className="text-xs text-[#876587] flex items-center justify-center gap-1 font-semibold">
               <TrendingUp className="w-3.5 h-3.5 text-[#9E4875]" />
               <span>
-                Avg {avgMoodScore.toFixed(1)}/5.0 across {totalCheckIns} reflections
+                {hasLogsThisWeek
+                  ? `Weekly Momentum ${emaScore.toFixed(1)}/5.0 across ${weeklyCheckIns} ${
+                      weeklyCheckIns === 1 ? 'reflection' : 'reflections'
+                    }`
+                  : 'No reflections yet this week • Resets Mondays 12:00 AM'}
               </span>
             </p>
           </div>
@@ -257,7 +284,7 @@ export function MaternalMoodReflection() {
             {/* Center Label */}
             <div className="absolute text-center select-none">
               <div className="font-serif font-black text-2xl text-[#2B172C] leading-none">
-                {totalCheckIns}
+                {weeklyCheckIns}
               </div>
               <div className="text-[10px] font-bold text-[#8E738E] mt-0.5">{dominantLabel}</div>
             </div>
@@ -278,21 +305,6 @@ export function MaternalMoodReflection() {
               <span>Fragile ({fragilePct}%)</span>
             </div>
           </div>
-        </div>
-
-        {/* Add Note / Journal Toggle Row */}
-        <div className="bg-[#FAF4F9] rounded-2xl p-4 border border-[#F0E4EF] flex items-center justify-between">
-          <div className="space-y-0.5">
-            <h4 className="text-xs font-bold text-[#2E182F]">Journal Reflection</h4>
-            <p className="text-[11px] text-[#866D88]">Capture a private thought with your check-in</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowNoteInput((v) => !v)}
-            className="bg-[#A24874] hover:bg-[#8D3B63] text-white text-xs font-bold px-4 py-2 rounded-full transition-all shadow-xs cursor-pointer"
-          >
-            {showNoteInput ? 'Hide Note' : 'Add Note'}
-          </button>
         </div>
 
         {/* 5-Point Expressive Scale Check-In */}
@@ -356,18 +368,16 @@ export function MaternalMoodReflection() {
           </div>
         </div>
 
-        {/* Optional Note Textarea */}
-        {showNoteInput && (
-          <div className="space-y-2 pt-1">
-            <textarea
-              value={noteText}
-              onChange={(e) => setNoteText(e.target.value)}
-              placeholder="How are your recovery, emotions, and rest feeling today?"
-              rows={2}
-              className="w-full p-3 rounded-2xl bg-[#FAF5FA] border border-[#ECDDEC] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#A24874]"
-            />
-          </div>
-        )}
+        {/* Journal Note Textarea (Always visible) */}
+        <div className="space-y-2 pt-1">
+          <textarea
+            value={noteText}
+            onChange={(e) => setNoteText(e.target.value)}
+            placeholder="How are your recovery, emotions, and rest feeling today?"
+            rows={2}
+            className="w-full p-3 rounded-2xl bg-[#FAF5FA] border border-[#ECDDEC] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#A24874]"
+          />
+        </div>
 
         {/* Save Action Button */}
         <button
@@ -386,36 +396,196 @@ export function MaternalMoodReflection() {
           )}
         </button>
 
-        {/* Recent Reflections Notes Drawer */}
-        {recentNotes.length > 0 && (
-          <div className="pt-3 border-t border-[#F1E6F0] space-y-2">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-[#7A5E7C]">
+        {/* Trigger button for Pop-up Mood History Dialog */}
+        <div className="pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setEditingMoodId(null);
+              setShowHistoryModal(true);
+            }}
+            className="w-full flex items-center justify-between text-[11px] font-bold text-[#7B5D7E] hover:text-[#2A162B] px-1 py-1 cursor-pointer transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-[#9E4875]" />
-              <span>Recent Check-Ins &amp; Journal Notes</span>
-            </div>
-            <div className="space-y-1.5">
-              {recentNotes.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-[#FAF5FA] p-2.5 rounded-xl border border-[#EFE2EE] text-[11px] text-[#4C3053]"
-                >
-                  <div className="flex items-center justify-between text-[10px] text-[#8E738E] font-semibold mb-0.5">
-                    <span>
-                      {item.logged_date} • Score: {item.score}/5
-                      {item.tags?.length ? ` • ${item.tags.slice(0, 2).join(', ')}` : ''}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => deleteMoodLog(item.id)}
-                      aria-label="Delete reflection"
-                      className="text-[#A888AA] hover:text-[#C93B63] transition-colors cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+              <span>Recent Check-Ins &amp; Journal Notes ({moodLogs.length})</span>
+            </span>
+            <span className="flex items-center gap-1 text-[10px] text-[#9E4875]">
+              <span>View &amp; Edit</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </span>
+          </button>
+        </div>
+
+        {/* Pop-up Mood History Dialog Modal */}
+        {showHistoryModal && (
+          <div
+            onClick={() => {
+              setEditingMoodId(null);
+              setShowHistoryModal(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-[32px] max-w-md w-full p-6 border border-[#ECE0EC] shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+            >
+              <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
+                    EMOTIONAL WELLNESS LOGS
                   </div>
-                  {item.notes && <p className="italic">&ldquo;{item.notes}&rdquo;</p>}
+                  <h3 className="font-serif font-bold text-lg text-[#2A162B]">
+                    Check-Ins &amp; Journal Notes
+                  </h3>
                 </div>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingMoodId(null);
+                    setShowHistoryModal(false);
+                  }}
+                  aria-label="Close mood history dialog"
+                  className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {moodLogs.length === 0 ? (
+                <p className="text-xs text-[#8C728C] text-center py-6">
+                  No mood reflections logged yet. Choose your emotional state above and tap &ldquo;Save Mood Check-In&rdquo;.
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {moodLogs.slice(0, 25).map((item) => {
+                    const isEditingThis = editingMoodId === item.id;
+                    const opt = moodOptions.find((m) => m.score === item.score) || moodOptions[3];
+                    return (
+                      <div
+                        key={item.id}
+                        className="bg-[#FAF5FA] p-3 rounded-2xl border border-[#EFE2EE] text-xs space-y-2.5"
+                      >
+                        {isEditingThis ? (
+                          <form onSubmit={handleSaveEditedMood} className="space-y-2.5">
+                            <div className="text-[10px] font-bold text-[#6B466D]">
+                              Edit Reflection ({item.logged_date})
+                            </div>
+                            <div className="flex items-center justify-between gap-1 bg-white p-1.5 rounded-xl border border-[#EDE0EC]">
+                              {moodOptions.map((option) => (
+                                <button
+                                  key={option.score}
+                                  type="button"
+                                  onClick={() => setEditScore(option.score)}
+                                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
+                                    editScore === option.score
+                                      ? `${option.colorBg} text-white shadow-2xs`
+                                      : 'text-[#836985] hover:bg-[#FAF4F9]'
+                                  }`}
+                                >
+                                  {option.label}
+                                </button>
+                              ))}
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {availableTags.map((tag) => {
+                                const active = editTags.includes(tag);
+                                return (
+                                  <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => toggleEditTag(tag)}
+                                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold cursor-pointer ${
+                                      active
+                                        ? 'bg-[#9E4875] text-white'
+                                        : 'bg-white border border-[#E5D5E4] text-[#69486F]'
+                                    }`}
+                                  >
+                                    {tag}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            <textarea
+                              value={editNote}
+                              onChange={(e) => setEditNote(e.target.value)}
+                              placeholder="Optional journal note..."
+                              rows={2}
+                              className="w-full p-2.5 rounded-xl bg-white border border-[#E5D5E4] text-xs text-[#2A162B]"
+                            />
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingMoodId(null)}
+                                className="px-3 py-1 rounded-full border border-[#E5D5E4] bg-white text-[10px] font-semibold text-[#6B466D] cursor-pointer"
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="px-3.5 py-1 rounded-full bg-[#9E4875] hover:bg-[#8B3B64] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                              >
+                                <Check className="w-3 h-3" />
+                                <span>Save</span>
+                              </button>
+                            </div>
+                          </form>
+                        ) : (
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-bold text-[#2A162B]">
+                                  {opt.label} ({item.score}/5) •{' '}
+                                  <span className="text-[#8E738E] font-semibold">{item.logged_date}</span>
+                                </div>
+                                {item.tags?.length ? (
+                                  <div className="text-[10px] text-[#8E738E] truncate">
+                                    {item.tags.join(', ')}
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => startEditMood(item)}
+                                  className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteMoodLog(item.id)}
+                                  aria-label="Delete reflection"
+                                  className="p-1.5 rounded-full text-[#A888AA] hover:text-[#C93B63] hover:bg-[#FFF2F5] transition-colors cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                            {item.notes && (
+                              <p className="text-[11px] text-[#4C3053] italic pt-0.5">
+                                &ldquo;{item.notes}&rdquo;
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingMoodId(null);
+                  setShowHistoryModal(false);
+                }}
+                className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer"
+              >
+                Done
+              </button>
             </div>
           </div>
         )}

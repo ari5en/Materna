@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   LogOut,
   Sparkles,
-  PhoneCall,
   Download,
   Trash2,
 } from 'lucide-react';
@@ -126,25 +125,6 @@ export default function ProfilePage() {
                   {postData.recoveryStage}
                 </div>
                 <div className="text-[10px] text-[#9E4875] mt-0.5 font-bold">{postData.pelvicFloorStage}</div>
-              </div>
-            </div>
-          </section>
-
-          {/* Maternal Support Resources */}
-          <section className="bg-white rounded-[32px] p-6 border border-[#EFE3EE] shadow-[0_8px_30px_rgba(140,80,120,0.05)] space-y-3">
-            <h2 className="font-serif text-base font-bold text-[#2A162B] flex items-center gap-2">
-              <PhoneCall className="w-4.5 h-4.5 text-[#B84E72]" />
-              <span>Maternal Crisis &amp; Postpartum Hotlines</span>
-            </h2>
-            <div className="space-y-2 text-xs">
-              <div className="bg-[#FFF4F7] p-3.5 rounded-2xl border border-[#FAD9E2]">
-                <div className="font-bold text-[#983457]">National Maternal Mental Health Hotline</div>
-                <div className="text-[#B84E72] font-black text-sm mt-0.5">1-833-943-5746 (1-833-9-HELP4MOMS)</div>
-                <p className="text-[10px] text-[#8C3A5A] mt-0.5">Free, confidential 24/7 support for postpartum moms.</p>
-              </div>
-              <div className="bg-[#FAF4F9] p-3 rounded-2xl border border-[#EFE2EE]">
-                <div className="font-bold text-[#543657]">Postpartum Support International (PSI)</div>
-                <div className="text-[#845E87] font-semibold text-xs mt-0.5">Call/Text: 1-800-944-4773</div>
               </div>
             </div>
           </section>

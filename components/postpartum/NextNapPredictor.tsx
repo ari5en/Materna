@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Moon, Lightbulb, Clock, Sun } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
-import { calculatePostpartumAge, getMinutesSince } from '@/lib/utils';
+import { calculatePostpartumAge, getMinutesSince, formatDuration } from '@/lib/utils';
 
 export function NextNapPredictor() {
   const { profile, updateProfile, babyLogs, lastWakeTimestamp, recordBabyWakeUp } = useMaterna();
@@ -43,10 +43,7 @@ export function NextNapPredictor() {
 
   const formatRemaining = (mins: number) => {
     if (mins <= 0) return 'Nap Due Now';
-    const h = Math.floor(mins / 60);
-    const m = mins % 60;
-    if (h > 0) return `In ${h}h ${m}m`;
-    return `In ${m}m`;
+    return `In ${formatDuration(mins)}`;
   };
 
   const handleSelectNapTarget = (target: 3 | 4) => {
@@ -72,7 +69,7 @@ export function NextNapPredictor() {
         </div>
 
         <span className="text-[10px] font-semibold bg-white text-[#784776] border border-[#EFE0ED] px-3 py-1 rounded-full shadow-2xs">
-          Wake window: {wakeWindowMins}m
+          Wake window: {formatDuration(wakeWindowMins)}
         </span>
       </div>
 
@@ -99,7 +96,7 @@ export function NextNapPredictor() {
               {formatRemaining(remainingMins)}
             </div>
             <div className="text-xs text-[#826684] mt-1 font-medium">
-              Approx. {predictedClockStr} • Nap #{nextNapNumber} ({minutesSinceWake}m awake)
+              Approx. {predictedClockStr} • Nap #{nextNapNumber} ({formatDuration(minutesSinceWake)} awake)
             </div>
           </div>
         </div>
@@ -113,8 +110,8 @@ export function NextNapPredictor() {
             ></div>
           </div>
           <div className="flex justify-between text-[10px] text-[#8E738E] font-medium px-0.5">
-            <span>Woke {minutesSinceWake}m ago</span>
-            <span>Target: {wakeWindowMins}m</span>
+            <span>Woke {formatDuration(minutesSinceWake)} ago</span>
+            <span>Target: {formatDuration(wakeWindowMins)}</span>
           </div>
         </div>
       </div>
@@ -125,7 +122,7 @@ export function NextNapPredictor() {
         <p className="text-xs text-[#7A442E] leading-relaxed">
           <strong className="font-bold text-[#5C2B18]">Actionable sleepy cues:</strong>{' '}
           {remainingMins <= 20
-            ? `Nap window is approaching within ${remainingMins} minutes! Dim the lights, swaddle, and start white noise now before overtiredness begins.`
+            ? `Nap window is approaching within ${formatDuration(remainingMins)}! Dim the lights, swaddle, and start white noise now before overtiredness begins.`
             : 'Watch for subtle cues like gaze aversion, turning head away from lights, red eyebrows, or gentle eye rubbing before fussiness sets in.'}
         </p>
       </div>

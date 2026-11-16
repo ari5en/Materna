@@ -13,7 +13,6 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   nap_target INTEGER DEFAULT 4,
   baby_weight_lbs NUMERIC(4,1),
   baby_length_in NUMERIC(4,1),
-  baby_head_in NUMERIC(4,1),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -25,8 +24,7 @@ ALTER TABLE public.profiles
   ADD COLUMN IF NOT EXISTS favorite_tracks TEXT[] DEFAULT ARRAY['t-1']::TEXT[],
   ADD COLUMN IF NOT EXISTS nap_target INTEGER DEFAULT 4,
   ADD COLUMN IF NOT EXISTS baby_weight_lbs NUMERIC(4,1),
-  ADD COLUMN IF NOT EXISTS baby_length_in NUMERIC(4,1),
-  ADD COLUMN IF NOT EXISTS baby_head_in NUMERIC(4,1);
+  ADD COLUMN IF NOT EXISTS baby_length_in NUMERIC(4,1);
 
 -- Enable RLS for profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;

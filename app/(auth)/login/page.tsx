@@ -7,7 +7,7 @@ import { useMaterna } from '@/lib/context/MaternaContext';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { LotusIcon } from '@/components/shared/LotusIcon';
 
-type AuthMode = 'signin' | 'signup' | 'magic';
+type AuthMode = 'signin' | 'signup';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -115,22 +115,6 @@ export default function LoginPage() {
           );
           setIsLoading(false);
         }
-      } else if (authMode === 'magic') {
-        const { error } = await supabase.auth.signInWithOtp({
-          email: email.trim(),
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-
-        if (error) {
-          setErrorMsg(error.message);
-          setIsLoading(false);
-          return;
-        }
-
-        setSuccessMsg('Magic login link sent! Check your email inbox to sign in.');
-        setIsLoading(false);
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'An unexpected authentication error occurred.');
@@ -150,24 +134,6 @@ export default function LoginPage() {
           <p className="text-xs text-[#7A617D] max-w-xs mx-auto">
             Serene Fourth-Trimester Maternal Sanctuary & Newborn Tracking
           </p>
-
-          {/* Supabase Connection Indicator */}
-          <div className="pt-1 flex justify-center">
-            <span
-              className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[10px] font-bold border ${
-                isSupabaseConfigured
-                  ? 'bg-[#EDF7F0] text-[#286840] border-[#CBE8D4]'
-                  : 'bg-[#FFF5EE] text-[#9A5226] border-[#F8DEC9]'
-              }`}
-            >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  isSupabaseConfigured ? 'bg-[#2E7D32] animate-pulse' : 'bg-[#D97736]'
-                }`}
-              />
-              <span>{isSupabaseConfigured ? 'Supabase Cloud Connected' : 'Backend not configured'}</span>
-            </span>
-          </div>
         </div>
 
         {/* Auth Mode Switcher Tabs */}
@@ -201,21 +167,6 @@ export default function LoginPage() {
             }`}
           >
             Create Account
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('magic');
-              setErrorMsg(null);
-              setSuccessMsg(null);
-            }}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              authMode === 'magic'
-                ? 'bg-white text-[#9E4875] shadow-2xs'
-                : 'text-[#785E7A] hover:text-[#2A162B]'
-            }`}
-          >
-            Magic Link
           </button>
         </div>
 
@@ -272,25 +223,23 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {authMode !== 'magic' && (
-            <div>
-              <label className="text-xs font-bold text-[#5B3F5D] block mb-1">
-                Password
-              </label>
-              <div className="relative">
-                <Lock className="w-4 h-4 text-[#A78FA8] absolute left-3.5 top-1/2 -translate-y-1/2" />
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  minLength={6}
-                  required
-                  className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#FAF5FA] border border-[#ECE0EB] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#9E4875]"
-                />
-              </div>
+          <div>
+            <label className="text-xs font-bold text-[#5B3F5D] block mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-[#A78FA8] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                minLength={6}
+                required
+                className="w-full pl-10 pr-4 py-3 rounded-2xl bg-[#FAF5FA] border border-[#ECE0EB] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#9E4875]"
+              />
             </div>
-          )}
+          </div>
 
           <button
             type="submit"
@@ -301,10 +250,8 @@ export default function LoginPage() {
               {isLoading
                 ? 'Connecting...'
                 : authMode === 'signin'
-                ? 'Sign In to Sanctuary'
-                : authMode === 'signup'
-                ? 'Create Account & Personalize'
-                : 'Send Magic Login Link'}
+                ? 'Sign In'
+                : 'Create Account & Personalize'}
             </span>
             <ArrowRight className="w-4 h-4" />
           </button>

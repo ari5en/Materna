@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { formatDuration } from '@/lib/utils';
 
 function csvEscape(val: unknown): string {
   if (val === null || val === undefined) return '';
@@ -64,11 +65,11 @@ export async function GET(req: Request) {
             csvEscape(
               b.log_type === 'feed'
                 ? b.details?.side
-                  ? `Nursing ${b.details.side} (${b.details.duration_mins || 0}m)`
+                  ? `Nursing ${b.details.side} (${formatDuration(b.details.duration_mins)})`
                   : `Bottle (${b.details?.amount_ml || 0}ml)`
                 : b.log_type === 'diaper'
                 ? `Diaper (${b.details?.type || 'wet'})`
-                : `Sleep (${b.details?.duration_mins || 0}m)`
+                : `Sleep (${formatDuration(b.details?.duration_mins)})`
             ),
             csvEscape(b.details),
           ].join(',')
@@ -105,8 +106,8 @@ export async function GET(req: Request) {
             'growth_measurement',
             csvEscape(g.measured_on),
             csvEscape(`${g.weight_lbs ?? ''} lbs`),
-            csvEscape(`Length ${g.length_in ?? ''} in, Head ${g.head_in ?? ''} in`),
-            csvEscape({ weight_lbs: g.weight_lbs, length_in: g.length_in, head_in: g.head_in }),
+            csvEscape(`Length ${g.length_in ?? ''} in`),
+            csvEscape({ weight_lbs: g.weight_lbs, length_in: g.length_in }),
           ].join(',')
         );
       }

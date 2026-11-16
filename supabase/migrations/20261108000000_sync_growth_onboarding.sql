@@ -43,9 +43,12 @@ CREATE TABLE IF NOT EXISTS public.growth_measurements (
   measured_on DATE NOT NULL DEFAULT CURRENT_DATE,
   weight_lbs NUMERIC(5,2) CHECK (weight_lbs IS NULL OR (weight_lbs > 0 AND weight_lbs < 60)),
   length_in NUMERIC(5,1) CHECK (length_in IS NULL OR (length_in > 0 AND length_in < 50)),
-  head_in NUMERIC(4,1) CHECK (head_in IS NULL OR (head_in > 0 AND head_in < 30)),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Drop legacy head circumference columns if they exist
+ALTER TABLE public.profiles DROP COLUMN IF EXISTS baby_head_in;
+ALTER TABLE public.growth_measurements DROP COLUMN IF EXISTS head_in;
 
 ALTER TABLE public.growth_measurements ENABLE ROW LEVEL SECURITY;
 

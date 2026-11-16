@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Droplets, Baby, Moon, Plus, Check, Clock, Trash2, Edit3, ChevronDown, ChevronUp } from 'lucide-react';
+import { Droplets, Baby, Moon, Plus, Check, Clock, Trash2, Edit3, ChevronRight, X } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
-import { formatTimeAgo } from '@/lib/utils';
+import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { BabyLog, BabyLogDetails } from '@/types/database';
 
 export function BabyQuickLogSummary() {
@@ -40,9 +40,9 @@ export function BabyQuickLogSummary() {
 
   const feedsCount = todayLogs.filter((l) => l.log_type === 'feed').length;
   const diapersCount = todayLogs.filter((l) => l.log_type === 'diaper').length;
-  const sleepHours = todayLogs
+  const sleepMinsToday = todayLogs
     .filter((l) => l.log_type === 'sleep')
-    .reduce((acc, curr) => acc + (curr.details.duration_mins || 0) / 60, 0);
+    .reduce((acc, curr) => acc + (curr.details.duration_mins || 0), 0);
 
   // Most recent logs overall
   const lastFeed = babyLogs.find((l) => l.log_type === 'feed');
@@ -92,7 +92,7 @@ export function BabyQuickLogSummary() {
         triggerToast(
           feedType === 'bottle'
             ? `Logged bottle feed (${bottleAmount}ml)`
-            : `Logged nursing (${feedType} breast, ${feedDuration}m)`
+            : `Logged nursing (${feedType} breast, ${formatDuration(feedDuration)})`
         );
       }
     } else if (activeModal === 'diaper') {
@@ -111,7 +111,7 @@ export function BabyQuickLogSummary() {
         triggerToast('Updated sleep log');
       } else {
         addBabyLog('sleep', details);
-        triggerToast(`Logged nap (${sleepDuration} mins)`);
+        triggerToast(`Logged nap (${formatDuration(sleepDuration)})`);
       }
     }
     setEditingLogId(null);
@@ -121,14 +121,14 @@ export function BabyQuickLogSummary() {
   const formatLogDescription = (log: typeof babyLogs[0]) => {
     if (log.log_type === 'feed') {
       if (log.details.side) {
-        return `Nursed ${log.details.side} breast (${log.details.duration_mins || 20}m)`;
+        return `Nursed ${log.details.side} breast (${formatDuration(log.details.duration_mins || 20)})`;
       }
       return `Bottle feed (${log.details.amount_ml || 120}ml)`;
     }
     if (log.log_type === 'diaper') {
       return `${(log.details.type || 'wet').toUpperCase()} diaper`;
     }
-    return `Slept ${log.details.duration_mins || 60} mins`;
+    return `Slept ${formatDuration(log.details.duration_mins || 60)}`;
   };
 
   return (
@@ -177,7 +177,7 @@ export function BabyQuickLogSummary() {
             <div className="text-[10px] font-medium text-[#7A5B80] truncate">
               {lastFeed
                 ? lastFeed.details.side
-                  ? `${lastFeed.details.side === 'left' ? 'Left' : 'Right'} • ${lastFeed.details.duration_mins}m`
+                  ? `${lastFeed.details.side === 'left' ? 'Left' : 'Right'} • ${formatDuration(lastFeed.details.duration_mins || 20)}`
                   : `${lastFeed.details.amount_ml || 120}ml bottle`
                 : 'Tap to log'}
             </div>
@@ -232,10 +232,12 @@ export function BabyQuickLogSummary() {
 
           <div className="my-2">
             <div className="font-serif text-2xl font-black text-[#2A162B] tracking-tight">
-              {sleepHours.toFixed(1)}h
+              {formatDuration(sleepMinsToday)}
             </div>
             <div className="text-[10px] font-medium text-[#74557A]">
-              {lastSleep?.details.duration_mins ? `${lastSleep.details.duration_mins}m last nap` : 'Tap to log'}
+              {lastSleep?.details.duration_mins
+                ? `${formatDuration(lastSleep.details.duration_mins)} last nap`
+                : 'Tap to log'}
             </div>
           </div>
 
@@ -270,58 +272,111 @@ export function BabyQuickLogSummary() {
         </div>
       </div>
 
-      {/* Collapsible Today's Activity Log Drawer */}
+      {/* Trigger button for Pop-up Activity History Dialog */}
       <div className="pt-1">
         <button
           type="button"
-          onClick={() => setShowTimeline((v) => !v)}
+          onClick={() => setShowTimeline(true)}
           className="w-full flex items-center justify-between text-[11px] font-bold text-[#7B5D7E] hover:text-[#2A162B] px-1 py-1 cursor-pointer transition-colors"
         >
           <span className="flex items-center gap-1.5">
             <Clock className="w-3.5 h-3.5 text-[#9E4875]" />
             <span>Recent Activity History ({todayLogs.length} today)</span>
           </span>
-          {showTimeline ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          <span className="flex items-center gap-1 text-[10px] text-[#9E4875]">
+            <span>View &amp; Edit</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </span>
         </button>
-
-        {showTimeline && (
-          <div className="mt-2 space-y-1.5 max-h-52 overflow-y-auto pr-1">
-            {babyLogs.slice(0, 8).map((log) => (
-              <div
-                key={log.id}
-                className="flex items-center justify-between bg-[#FAF5FA] px-3 py-2 rounded-xl border border-[#EFE2EE] text-xs"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#9E4875]" />
-                  <span className="font-semibold text-[#2A162B]">{formatLogDescription(log)}</span>
-                </div>
-                <div className="flex items-center gap-2.5">
-                  <span className="text-[10px] text-[#8C728C]">{formatTimeAgo(log.timestamp, nowMs)}</span>
-                  <button
-                    type="button"
-                    onClick={() => openEditLog(log)}
-                    aria-label="Edit log"
-                    className="text-[#A888AA] hover:text-[#784776] transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      deleteBabyLog(log.id);
-                      triggerToast('Log entry removed');
-                    }}
-                    aria-label="Delete log"
-                    className="text-[#A888AA] hover:text-[#C93B63] transition-colors cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Pop-up Activity History Dialog Modal */}
+      {showTimeline && !activeModal && (
+        <div
+          onClick={() => setShowTimeline(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-[32px] max-w-md w-full p-6 border border-[#ECE0EC] shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
+                  {babyName}&apos;S CARE TIMELINE
+                </div>
+                <h3 className="font-serif font-bold text-lg text-[#2A162B]">
+                  Recent Activity History
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowTimeline(false)}
+                aria-label="Close history dialog"
+                className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {babyLogs.length === 0 ? (
+              <p className="text-xs text-[#8C728C] text-center py-6">
+                No activity logs recorded yet. Tap a card or quick button to log {babyName}&apos;s care.
+              </p>
+            ) : (
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {babyLogs.slice(0, 25).map((log) => (
+                  <div
+                    key={log.id}
+                    className="flex items-center justify-between bg-[#FAF5FA] px-3.5 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="w-2 h-2 rounded-full bg-[#9E4875] shrink-0" />
+                      <div className="truncate">
+                        <div className="font-semibold text-[#2A162B] truncate">
+                          {formatLogDescription(log)}
+                        </div>
+                        <div className="text-[10px] text-[#8C728C]">
+                          {formatTimeAgo(log.timestamp, nowMs)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <button
+                        type="button"
+                        onClick={() => openEditLog(log)}
+                        className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <Edit3 className="w-3 h-3" />
+                        <span>Edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          deleteBabyLog(log.id);
+                          triggerToast('Log entry removed');
+                        }}
+                        aria-label="Delete log"
+                        className="p-1.5 rounded-full text-[#A888AA] hover:text-[#C93B63] hover:bg-[#FFF2F5] transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowTimeline(false)}
+              className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Toast Banner */}
       {toastMessage && (
@@ -381,43 +436,49 @@ export function BabyQuickLogSummary() {
                 </div>
 
                 {feedType === 'bottle' ? (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[#664969]">Bottle Amount (ml)</label>
-                    <div className="flex items-center gap-2">
-                      {[60, 90, 120, 150].map((amt) => (
-                        <button
-                          key={amt}
-                          type="button"
-                          onClick={() => setBottleAmount(amt)}
-                          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border ${
-                            bottleAmount === amt
-                              ? 'bg-[#69486F] text-white border-[#69486F]'
-                              : 'bg-white border-[#E8D9E8] text-[#5C3E60]'
-                          }`}
-                        >
-                          {amt}ml
-                        </button>
-                      ))}
+                  <div className="space-y-2 bg-[#FAF5FA] p-3.5 rounded-2xl border border-[#EFE2EE]">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-[#664969]">Bottle Amount</label>
+                      <span className="font-serif text-sm font-bold text-[#9E4875] bg-white px-2.5 py-0.5 rounded-full border border-[#E8D9E8]">
+                        {bottleAmount} ml
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={30}
+                      max={240}
+                      step={10}
+                      value={bottleAmount}
+                      onChange={(e) => setBottleAmount(Number(e.target.value))}
+                      className="w-full h-2 rounded-lg appearance-none bg-[#E8D9E8] accent-[#9E4875] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-[#8C728C] font-medium">
+                      <span>30ml</span>
+                      <span>120ml</span>
+                      <span>240ml</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[#664969]">Nursing Duration</label>
-                    <div className="flex items-center gap-2">
-                      {[15, 20, 25, 30].map((min) => (
-                        <button
-                          key={min}
-                          type="button"
-                          onClick={() => setFeedDuration(min)}
-                          className={`flex-1 py-1.5 text-xs font-semibold rounded-lg border ${
-                            feedDuration === min
-                              ? 'bg-[#69486F] text-white border-[#69486F]'
-                              : 'bg-white border-[#E8D9E8] text-[#5C3E60]'
-                          }`}
-                        >
-                          {min}m
-                        </button>
-                      ))}
+                  <div className="space-y-2 bg-[#FAF5FA] p-3.5 rounded-2xl border border-[#EFE2EE]">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-[#664969]">Nursing Duration</label>
+                      <span className="font-serif text-sm font-bold text-[#9E4875] bg-white px-2.5 py-0.5 rounded-full border border-[#E8D9E8]">
+                        {formatDuration(feedDuration)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={5}
+                      max={60}
+                      step={5}
+                      value={feedDuration}
+                      onChange={(e) => setFeedDuration(Number(e.target.value))}
+                      className="w-full h-2 rounded-lg appearance-none bg-[#E8D9E8] accent-[#9E4875] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-[#8C728C] font-medium">
+                      <span>5m</span>
+                      <span>30m</span>
+                      <span>1h</span>
                     </div>
                   </div>
                 )}
@@ -449,23 +510,26 @@ export function BabyQuickLogSummary() {
 
             {/* Sleep Options */}
             {activeModal === 'sleep' && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-[#664969]">Nap Duration</label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[45, 60, 90, 120].map((duration) => (
-                    <button
-                      key={duration}
-                      type="button"
-                      onClick={() => setSleepDuration(duration)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition-all ${
-                        sleepDuration === duration
-                          ? 'bg-[#69486F] text-white border-[#69486F]'
-                          : 'bg-[#FAF5FA] border-[#EBDDE9] text-[#5C3E60]'
-                      }`}
-                    >
-                      {duration}m
-                    </button>
-                  ))}
+              <div className="space-y-2 bg-[#FAF5FA] p-3.5 rounded-2xl border border-[#EFE2EE]">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-[#664969]">Nap Duration</label>
+                  <span className="font-serif text-sm font-bold text-[#9E4875] bg-white px-2.5 py-0.5 rounded-full border border-[#E8D9E8]">
+                    {formatDuration(sleepDuration)}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={180}
+                  step={5}
+                  value={sleepDuration}
+                  onChange={(e) => setSleepDuration(Number(e.target.value))}
+                  className="w-full h-2 rounded-lg appearance-none bg-[#E8D9E8] accent-[#9E4875] cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-[#8C728C] font-medium">
+                  <span>15m</span>
+                  <span>1h 30m</span>
+                  <span>3h</span>
                 </div>
               </div>
             )}

@@ -19,6 +19,7 @@ import type {
   BabyLogDetails,
 } from '@/types/database';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { setClientCurrentDate } from '@/lib/utils';
 
 export interface MaternaContextType {
   profile: Profile;
@@ -29,6 +30,7 @@ export interface MaternaContextType {
   deleteBabyLog: (id: string) => Promise<void>;
   moodLogs: MaternalMoodLog[];
   addMoodLog: (score: number, tags: string[], notes?: string) => Promise<void>;
+  updateMoodLog: (id: string, updates: { score: number; tags: string[]; notes?: string }) => Promise<void>;
   deleteMoodLog: (id: string) => Promise<void>;
   recoveryLog: MaternalRecoveryLog;
   recoveryHistory: MaternalRecoveryLog[];
@@ -40,8 +42,15 @@ export interface MaternaContextType {
   addGrowthMeasurement: (m: {
     weight_lbs?: number | null;
     length_in?: number | null;
-    head_in?: number | null;
   }) => Promise<void>;
+  updateGrowthMeasurement: (
+    id: string,
+    m: {
+      weight_lbs?: number | null;
+      length_in?: number | null;
+      measured_on?: string;
+    }
+  ) => Promise<void>;
   deleteGrowthMeasurement: (id: string) => Promise<void>;
   lastWakeTimestamp: string;
   recordBabyWakeUp: () => Promise<void>;
@@ -84,14 +93,13 @@ function emptyProfile(id = ''): Profile {
     id,
     full_name: '',
     baby_name: '',
-    baby_birth_date: INITIAL_DATE_PLACEHOLDER,
+    baby_birth_date: '',
     primary_focus: [],
     completed_milestones: [],
     favorite_tracks: [],
     nap_target: 4,
     baby_weight_lbs: null,
     baby_length_in: null,
-    baby_head_in: null,
     onboarded: false,
     last_wake_at: null,
     created_at: INITIAL_ISO_PLACEHOLDER,
@@ -117,6 +125,7 @@ const fallbackContextValue: MaternaContextType = {
   deleteBabyLog: async () => {},
   moodLogs: [],
   addMoodLog: async () => {},
+  updateMoodLog: async () => {},
   deleteMoodLog: async () => {},
   recoveryLog: emptyRecovery(),
   recoveryHistory: [],
@@ -126,6 +135,7 @@ const fallbackContextValue: MaternaContextType = {
   toggleFavoriteTrack: async () => {},
   growthMeasurements: [],
   addGrowthMeasurement: async () => {},
+  updateGrowthMeasurement: async () => {},
   deleteGrowthMeasurement: async () => {},
   lastWakeTimestamp: INITIAL_ISO_PLACEHOLDER,
   recordBabyWakeUp: async () => {},
@@ -251,7 +261,10 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
             .single();
           loadedProfile = created ?? null;
         }
-        if (loadedProfile) setProfile(loadedProfile);
+        if (loadedProfile) {
+          setClientCurrentDate(new Date());
+          setProfile(loadedProfile);
+        }
 
         setBabyLogs(babyRes.data ?? []);
         setMoodLogs(moodRes.data ?? []);
@@ -466,6 +479,38 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const updateMoodLog = async (
+    id: string,
+    updates: { score: number; tags: string[]; notes?: string }
+  ) => {
+    if (!supabase) return;
+    const previous = moodLogsRef.current.find((m) => m.id === id);
+    if (!previous) return;
+
+    setMoodLogs((prev) =>
+      prev.map((m) =>
+        m.id === id ? { ...m, score: updates.score, tags: updates.tags, notes: updates.notes } : m
+      )
+    );
+
+    const userId = await getUserId();
+    const { error } = await (supabase as any)
+      .from('maternal_mood_logs')
+      .update({
+        score: updates.score,
+        tags: updates.tags,
+        notes: updates.notes ?? null,
+      })
+      .eq('id', id)
+      .eq('user_id', userId ?? '');
+
+    if (error) {
+      console.error('Supabase mood log update failed:', error);
+      setMoodLogs((prev) => prev.map((m) => (m.id === id ? previous : m)));
+      setSyncError('Your reflection could not be updated. Please try again.');
+    }
+  };
+
   const deleteMoodLog = async (id: string) => {
     if (!supabase) return;
     const removed = moodLogsRef.current.find((m) => m.id === id);
@@ -562,7 +607,6 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
   const addGrowthMeasurement = async (m: {
     weight_lbs?: number | null;
     length_in?: number | null;
-    head_in?: number | null;
   }) => {
     const userId = await getUserId();
     if (!userId || !supabase) {
@@ -576,7 +620,6 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
       measured_on: getTodayDateString(),
       weight_lbs: m.weight_lbs ?? null,
       length_in: m.length_in ?? null,
-      head_in: m.head_in ?? null,
       created_at: new Date().toISOString(),
     };
 
@@ -594,8 +637,56 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     await updateProfile({
       baby_weight_lbs: entry.weight_lbs ?? profileRef.current.baby_weight_lbs ?? null,
       baby_length_in: entry.length_in ?? profileRef.current.baby_length_in ?? null,
-      baby_head_in: entry.head_in ?? profileRef.current.baby_head_in ?? null,
     });
+  };
+
+  const updateGrowthMeasurement = async (
+    id: string,
+    m: {
+      weight_lbs?: number | null;
+      length_in?: number | null;
+      measured_on?: string;
+    }
+  ) => {
+    if (!supabase) return;
+    const previous = growthRef.current.find((g) => g.id === id);
+    if (!previous) return;
+
+    const updatedRow: GrowthMeasurement = {
+      ...previous,
+      weight_lbs: m.weight_lbs !== undefined ? m.weight_lbs : previous.weight_lbs,
+      length_in: m.length_in !== undefined ? m.length_in : previous.length_in,
+      measured_on: m.measured_on ?? previous.measured_on,
+    };
+
+    const nextList = growthRef.current.map((g) => (g.id === id ? updatedRow : g));
+    setGrowthMeasurements(nextList);
+
+    const userId = await getUserId();
+    const { error } = await (supabase as any)
+      .from('growth_measurements')
+      .update({
+        weight_lbs: updatedRow.weight_lbs,
+        length_in: updatedRow.length_in,
+        measured_on: updatedRow.measured_on,
+      })
+      .eq('id', id)
+      .eq('user_id', userId ?? '');
+
+    if (error) {
+      console.error('Supabase growth update failed:', error);
+      setGrowthMeasurements((prev) => prev.map((g) => (g.id === id ? previous : g)));
+      setSyncError('That measurement could not be updated. Please try again.');
+      return;
+    }
+
+    const latest = nextList[0];
+    if (latest && latest.id === id) {
+      await updateProfile({
+        baby_weight_lbs: latest.weight_lbs ?? null,
+        baby_length_in: latest.length_in ?? null,
+      });
+    }
   };
 
   const deleteGrowthMeasurement = async (id: string) => {
@@ -626,7 +717,6 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     await updateProfile({
       baby_weight_lbs: latest?.weight_lbs ?? null,
       baby_length_in: latest?.length_in ?? null,
-      baby_head_in: latest?.head_in ?? null,
     });
   };
 
@@ -662,6 +752,7 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
         deleteBabyLog,
         moodLogs,
         addMoodLog,
+        updateMoodLog,
         deleteMoodLog,
         recoveryLog,
         recoveryHistory,
@@ -671,6 +762,7 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
         toggleFavoriteTrack,
         growthMeasurements,
         addGrowthMeasurement,
+        updateGrowthMeasurement,
         deleteGrowthMeasurement,
         lastWakeTimestamp,
         recordBabyWakeUp,

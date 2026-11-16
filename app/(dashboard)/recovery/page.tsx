@@ -9,6 +9,9 @@ import {
   CheckCircle2, 
   Activity, 
   ShieldCheck, 
+  History,
+  ChevronRight,
+  X,
 } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { calculatePostpartumAge } from '@/lib/utils';
@@ -26,6 +29,7 @@ export default function RecoveryPage() {
 
   const postData = calculatePostpartumAge(profile.baby_birth_date);
   const [activeTab, setActiveTab] = useState<'physical' | 'nutrition'>('physical');
+  const [showRecoveryHistory, setShowRecoveryHistory] = useState(false);
 
   const waterGlasses = recoveryLog.water_glasses ?? 0;
   const completedExercises = recoveryLog.completed_exercises ?? [];
@@ -91,28 +95,28 @@ export default function RecoveryPage() {
     {
       id: 'ex-1',
       name: 'Diaphragmatic Ribcage Breathing',
-      duration: '3 mins',
+      duration: '3m',
       benefit: 'Relieves intra-abdominal pressure & awakens transverse abdominis.',
       reps: '10 deep breaths',
     },
     {
       id: 'ex-2',
       name: 'Gentle Pelvic Floor Lifts (Kegels)',
-      duration: '4 mins',
+      duration: '4m',
       benefit: 'Coordinates lift on exhale, full relaxing release on inhale.',
       reps: '3 sets of 8 reps',
     },
     {
       id: 'ex-3',
       name: 'Supported Glute Bridges',
-      duration: '5 mins',
+      duration: '5m',
       benefit: 'Activates posterior chain without straining the linea alba.',
       reps: '2 sets of 10 reps',
     },
     {
       id: 'ex-4',
       name: 'Seated Cat-Cow Flow',
-      duration: '4 mins',
+      duration: '4m',
       benefit: 'Releases thoracic tension from nursing and rocking baby.',
       reps: '8 gentle cycles',
     },
@@ -312,22 +316,73 @@ export default function RecoveryPage() {
               </div>
 
               {recoveryHistory.length > 0 && (
-                <div className="pt-3 border-t border-[#F1E6F0] space-y-2">
-                  <div className="text-[11px] font-bold text-[#7A5E7C]">
-                    Recent Daily Recovery &amp; Hydration History
-                  </div>
-                  <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                    {recoveryHistory.slice(0, 7).map((row) => (
-                      <div
-                        key={row.id || row.logged_date}
-                        className="flex items-center justify-between bg-[#FAF5FA] px-3 py-2 rounded-xl border border-[#EFE2EE] text-[11px]"
-                      >
-                        <span className="font-semibold text-[#2A162B]">{row.logged_date}</span>
-                        <span className="text-[#785E7B] font-medium">
-                          {row.water_glasses} / 10 glasses • {(row.completed_exercises || []).length} exercises
-                        </span>
+                <div className="pt-2 border-t border-[#F1E6F0]">
+                  <button
+                    type="button"
+                    onClick={() => setShowRecoveryHistory(true)}
+                    className="w-full flex items-center justify-between text-[11px] font-bold text-[#7B5D7E] hover:text-[#2A162B] px-1 py-1 cursor-pointer transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <History className="w-3.5 h-3.5 text-[#9E4875]" />
+                      <span>Recent Daily Recovery &amp; Hydration History ({recoveryHistory.length})</span>
+                    </span>
+                    <span className="flex items-center gap-1 text-[10px] text-[#9E4875]">
+                      <span>View</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {showRecoveryHistory && (
+                <div
+                  onClick={() => setShowRecoveryHistory(false)}
+                  className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-[32px] max-w-md w-full p-6 border border-[#ECE0EC] shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+                  >
+                    <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
+                          MATERNAL RECOVERY LOGS
+                        </div>
+                        <h3 className="font-serif font-bold text-lg text-[#2A162B]">
+                          Recovery &amp; Hydration History
+                        </h3>
                       </div>
-                    ))}
+                      <button
+                        type="button"
+                        onClick={() => setShowRecoveryHistory(false)}
+                        aria-label="Close recovery history dialog"
+                        className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                      {recoveryHistory.map((row) => (
+                        <div
+                          key={row.id || row.logged_date}
+                          className="flex items-center justify-between px-3 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs"
+                        >
+                          <span className="font-bold text-[#2A162B]">{row.logged_date}</span>
+                          <span className="text-[#785E7B] font-semibold">
+                            {row.water_glasses} / 10 glasses • {(row.completed_exercises || []).length} exercises
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowRecoveryHistory(false)}
+                      className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Done
+                    </button>
                   </div>
                 </div>
               )}

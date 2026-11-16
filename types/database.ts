@@ -9,7 +9,6 @@ export interface Profile {
   nap_target?: number;
   baby_weight_lbs?: number | null;
   baby_length_in?: number | null;
-  baby_head_in?: number | null;
   onboarded?: boolean;
   last_wake_at?: string | null;
   created_at: string;
@@ -60,7 +59,6 @@ export interface GrowthMeasurement {
   measured_on: string;
   weight_lbs: number | null;
   length_in: number | null;
-  head_in: number | null;
   created_at?: string;
 }
 

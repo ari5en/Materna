@@ -16,7 +16,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
-import { calculatePostpartumAge, getMinutesSince } from '@/lib/utils';
+import { calculatePostpartumAge, getMinutesSince, formatDuration } from '@/lib/utils';
 import { LotusIcon } from './LotusIcon';
 
 const FEED_INTERVAL_MINS = 180; // 3 hours standard newborn feed interval
@@ -36,6 +36,31 @@ export function Navbar() {
   const [clientNowMs, setClientNowMs] = useState<number | undefined>(undefined);
   const [notifPermission, setNotifPermission] = useState<'default' | 'granted' | 'denied' | 'unsupported'>('default');
   const lastAlertedNapRef = useRef<string | null>(null);
+  const notifPopoverRef = useRef<HTMLDivElement | null>(null);
+  const notifButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (!showNotifications) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      const target = event.target as Node;
+      if (
+        notifPopoverRef.current &&
+        !notifPopoverRef.current.contains(target) &&
+        notifButtonRef.current &&
+        !notifButtonRef.current.contains(target)
+      ) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showNotifications]);
 
   useEffect(() => {
     const updateClock = () => setClientNowMs(Date.now());
@@ -54,13 +79,31 @@ export function Navbar() {
 
   const postData = calculatePostpartumAge(profile.baby_birth_date);
   const babyName = profile.baby_name || 'Baby';
-  // First letter of the mother's name, shown in the avatar badge
-  const motherInitial = (profile.full_name?.trim()?.[0] ?? 'M').toUpperCase();
 
-  // Dynamic Notification Insights
+  // Dynamic Notification Insights (synchronized with NextNapPredictor)
   const wakeWindowMins = postData.recommendedWakeWindowMins || 75;
-  const awakeMins = getMinutesSince(lastWakeTimestamp, clientNowMs);
+  const napTarget = Number(profile.nap_target || 4);
+  const awakeMins = Math.min(240, getMinutesSince(lastWakeTimestamp, clientNowMs));
   const remainingNapMins = Math.max(0, wakeWindowMins - awakeMins);
+
+  const isHydrated = clientNowMs !== undefined;
+  const effectiveMs = clientNowMs ?? new Date(lastWakeTimestamp).getTime() + 45 * 60000;
+  const utcTodayStr = isHydrated ? new Date(effectiveMs).toISOString().split('T')[0] : '';
+  const todaySleepCount = utcTodayStr
+    ? babyLogs.filter((l) => l.log_type === 'sleep' && l.timestamp.startsWith(utcTodayStr)).length
+    : babyLogs.filter((l) => l.log_type === 'sleep').length;
+  const nextNapNumber = Math.min(napTarget, todaySleepCount + 1);
+
+  const wakeTimeMs = new Date(lastWakeTimestamp).getTime() || effectiveMs - 45 * 60000;
+  const predictedNapDate = new Date(wakeTimeMs + wakeWindowMins * 60000);
+  const predictedClockStr = isHydrated
+    ? predictedNapDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+    : '11:30 AM';
+
+  const formatNapRemaining = (mins: number) => {
+    if (mins <= 0) return 'Nap Due Now';
+    return `In ${formatDuration(mins)}`;
+  };
 
   const lastFeed = babyLogs.find((l) => l.log_type === 'feed');
   const minsSinceFeed = lastFeed ? getMinutesSince(lastFeed.timestamp, clientNowMs) : null;
@@ -77,7 +120,7 @@ export function Navbar() {
     : '';
   const hasLoggedMoodToday = todayStr ? moodLogs.some((m) => m.logged_date === todayStr) : false;
 
-  const napDue = remainingNapMins <= 15;
+  const napDue = remainingNapMins <= 20;
   const feedDue = minsSinceFeed === null || remainingFeedMins <= 15;
   const hydrationPending = (recoveryLog.water_glasses ?? 0) < 8;
   const activeAlertsCount =
@@ -86,24 +129,37 @@ export function Navbar() {
     (hydrationPending ? 1 : 0) +
     (!hasLoggedMoodToday ? 1 : 0);
 
-  // Trigger a gentle browser notification once per wake timestamp when nap window is due
+  // Trigger a gentle browser notification once per wake timestamp when nap window is approaching/due
   useEffect(() => {
     if (
       notifPermission === 'granted' &&
-      remainingNapMins === 0 &&
+      napDue &&
       lastWakeTimestamp &&
       lastAlertedNapRef.current !== lastWakeTimestamp
     ) {
       lastAlertedNapRef.current = lastWakeTimestamp;
       try {
-        new Notification(`Materna • ${babyName}'s Nap Window`, {
-          body: `${babyName} has reached the ${wakeWindowMins}-minute wake window. Watch for sleepy cues.`,
+        new Notification(`Materna • ${babyName}'s Nap #${nextNapNumber} (${formatNapRemaining(remainingNapMins)})`, {
+          body:
+            remainingNapMins <= 0
+              ? `${babyName} has reached the ${formatDuration(wakeWindowMins)} wake window (${formatDuration(awakeMins)} awake).`
+              : `Approx. ${predictedClockStr} • ${formatDuration(awakeMins)} awake of ${formatDuration(wakeWindowMins)} target. Watch for sleepy cues.`,
         });
       } catch {
         // Ignore if blocked by browser
       }
     }
-  }, [notifPermission, remainingNapMins, lastWakeTimestamp, babyName, wakeWindowMins]);
+  }, [
+    notifPermission,
+    napDue,
+    remainingNapMins,
+    lastWakeTimestamp,
+    babyName,
+    wakeWindowMins,
+    awakeMins,
+    nextNapNumber,
+    predictedClockStr,
+  ]);
 
   const handleEnableBrowserAlerts = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) return;
@@ -131,31 +187,18 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-30 w-full bg-[#F8F3F7]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-3 border-b border-[#EFE3EE]/80 transition-all">
       <div className="max-w-6xl mx-auto flex items-center justify-between relative">
-        {/* Left: Mother Avatar (initial) & Brand */}
-        <div className="flex items-center gap-3">
-          <Link href="/profile" className="relative group shrink-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#DE9FA8] to-[#FCD9CE] p-0.5 shadow-sm border border-white">
-              <div className="w-full h-full rounded-full bg-gradient-to-tr from-[#9E4875] to-[#DF6385] text-white flex items-center justify-center font-serif text-base font-bold select-none">
-                {motherInitial}
-              </div>
-            </div>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#78A890] ring-2 ring-white"></span>
-          </Link>
-
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#F3E7F2] text-[#69486F] flex items-center justify-center shadow-2xs">
-              <LotusIcon className="w-4.5 h-4.5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="font-serif font-bold text-lg tracking-tight text-[#3A223E] leading-none">
-                Materna
-              </span>
-              <span className="text-[10px] font-medium text-[#8F7292] leading-tight">
-                Postpartum • Wk {postData.weeks}
-              </span>
-            </div>
-          </Link>
-        </div>
+        {/* Left: Brand Logo & Title */}
+        <Link href="/" className="flex items-center gap-2.5">
+          <LotusIcon className="w-8 h-8" />
+          <div className="flex flex-col">
+            <span className="font-serif font-bold text-lg tracking-tight text-[#3A223E] leading-none">
+              Materna
+            </span>
+            <span className="text-[10px] font-medium text-[#8F7292] leading-tight">
+              Postpartum • Wk {postData.weeks}
+            </span>
+          </div>
+        </Link>
 
         {/* Center: Desktop Navigation Bar with Berry Rose active pill */}
         <nav className="hidden md:flex items-center gap-1.5 bg-white/80 p-1.5 rounded-full border border-[#EBE0EC] shadow-2xs">
@@ -190,6 +233,7 @@ export function Navbar() {
           </button>
 
           <button
+            ref={notifButtonRef}
             type="button"
             onClick={() => setShowNotifications((v) => !v)}
             aria-label="Notifications"
@@ -205,12 +249,15 @@ export function Navbar() {
 
         </div>
 
-        {/* Live Sanctuary Reminders Popover */}
+        {/* Live Notifications Popover */}
         {showNotifications && (
-          <div className="absolute right-0 top-13 w-80 bg-white rounded-2xl border border-[#ECE0EC] shadow-xl p-4 space-y-2.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+          <div
+            ref={notifPopoverRef}
+            className="absolute right-0 top-13 w-80 bg-white rounded-2xl border border-[#ECE0EC] shadow-xl p-4 space-y-2.5 z-50 animate-in fade-in zoom-in-95 duration-150"
+          >
             <div className="flex items-center justify-between pb-1.5 border-b border-[#F2E8F1]">
               <span className="text-xs font-bold text-[#2A162B]">
-                Sanctuary Pulse ({activeAlertsCount} active)
+                Notification ({activeAlertsCount})
               </span>
               <button
                 type="button"
@@ -222,61 +269,113 @@ export function Navbar() {
             </div>
 
             <div className="space-y-2 text-xs">
-              {/* 1. Nap Window Reminder */}
-              <div
-                className={`p-2.5 rounded-xl border flex items-start gap-2 ${
-                  napDue ? 'bg-[#FFF4F7] border-[#FAD9E2]' : 'bg-[#FAF4F9] border-[#EFE2EE]'
+              {/* 1. Nap Window Reminder -> directs to Journey (/) */}
+              <Link
+                href="/"
+                onClick={() => setShowNotifications(false)}
+                className={`p-2.5 rounded-xl border flex items-start gap-2 transition-colors ${
+                  napDue
+                    ? 'bg-[#FFF4F8] hover:bg-[#FCE8F0] border-[#F8D0DF]'
+                    : 'bg-[#F9F6FA]/70 hover:bg-[#F3EDF5] border-[#EDE4EE]'
                 }`}
               >
-                <Moon className="w-3.5 h-3.5 text-[#9E4875] shrink-0 mt-0.5" />
+                <Moon
+                  className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                    napDue ? 'text-[#9E4875]' : 'text-[#B29BB4]'
+                  }`}
+                />
                 <div>
-                  <div className="font-bold text-[#2A162B]">
+                  <div
+                    className={
+                      napDue ? 'font-bold text-[#2A162B]' : 'font-normal text-[#8E7690]'
+                    }
+                  >
                     {remainingNapMins > 0
-                      ? `${babyName}'s Next Nap in ${remainingNapMins}m`
-                      : `${babyName}'s Nap Window is Due`}
+                      ? `${babyName}'s Next Nap: ${formatNapRemaining(remainingNapMins)}`
+                      : `${babyName}'s Nap Window: Nap Due Now`}
                   </div>
-                  <div className="text-[10px] text-[#7D607E]">
-                    Wake window target: {wakeWindowMins} mins (awake {awakeMins}m)
+                  <div
+                    className={`text-[10px] ${
+                      napDue ? 'text-[#6E4D70]' : 'text-[#A892AA]'
+                    }`}
+                  >
+                    Approx. {predictedClockStr} • Nap #{nextNapNumber} ({formatDuration(awakeMins)} awake / {formatDuration(wakeWindowMins)} target)
                   </div>
                 </div>
-              </div>
+              </Link>
 
-              {/* 2. Feed Interval Reminder */}
-              <div
-                className={`p-2.5 rounded-xl border flex items-start gap-2 ${
-                  feedDue ? 'bg-[#FFF4F7] border-[#FAD9E2]' : 'bg-[#FAF4F9] border-[#EFE2EE]'
+              {/* 2. Feed Interval Reminder -> directs to Journey (/) */}
+              <Link
+                href="/"
+                onClick={() => setShowNotifications(false)}
+                className={`p-2.5 rounded-xl border flex items-start gap-2 transition-colors ${
+                  feedDue
+                    ? 'bg-[#FFF4F8] hover:bg-[#FCE8F0] border-[#F8D0DF]'
+                    : 'bg-[#F9F6FA]/70 hover:bg-[#F3EDF5] border-[#EDE4EE]'
                 }`}
               >
-                <Baby className="w-3.5 h-3.5 text-[#9E4875] shrink-0 mt-0.5" />
+                <Baby
+                  className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                    feedDue ? 'text-[#9E4875]' : 'text-[#B29BB4]'
+                  }`}
+                />
                 <div>
-                  <div className="font-bold text-[#2A162B]">
+                  <div
+                    className={
+                      feedDue ? 'font-bold text-[#2A162B]' : 'font-normal text-[#8E7690]'
+                    }
+                  >
                     {minsSinceFeed === null
                       ? `Log ${babyName}'s First Feed Today`
                       : remainingFeedMins > 0
-                      ? `Next Feed Window in ~${remainingFeedMins}m`
+                      ? `Next Feed Window in ~${formatDuration(remainingFeedMins)}`
                       : `${babyName}'s 3h Feed Window is Due`}
                   </div>
-                  <div className="text-[10px] text-[#7D607E]">
+                  <div
+                    className={`text-[10px] ${
+                      feedDue ? 'text-[#6E4D70]' : 'text-[#A892AA]'
+                    }`}
+                  >
                     {minsSinceFeed !== null
-                      ? `Last fed ${minsSinceFeed}m ago • 3h newborn rhythm`
+                      ? `Last fed ${formatDuration(minsSinceFeed)} ago • 3h newborn rhythm`
                       : 'Tap Quick-Log on the Journey page'}
                   </div>
                 </div>
-              </div>
+              </Link>
 
-              {/* 3. Hydration Reminder + Quick +1 Glass */}
-              <div className="p-2.5 rounded-xl bg-[#FAF4F9] border border-[#EFE2EE] flex items-center justify-between gap-2">
+              {/* 3. Hydration Reminder + Quick +1 Glass -> directs to Recovery (/recovery) */}
+              <div
+                className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 transition-colors ${
+                  hydrationPending
+                    ? 'bg-[#FFF4F8] hover:bg-[#FCE8F0] border-[#F8D0DF]'
+                    : 'bg-[#F9F6FA]/70 hover:bg-[#F3EDF5] border-[#EDE4EE]'
+                }`}
+              >
                 <Link
                   href="/recovery"
                   onClick={() => setShowNotifications(false)}
                   className="flex items-start gap-2 flex-1"
                 >
-                  <Droplets className="w-3.5 h-3.5 text-[#9E4875] shrink-0 mt-0.5" />
+                  <Droplets
+                    className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                      hydrationPending ? 'text-[#9E4875]' : 'text-[#B29BB4]'
+                    }`}
+                  />
                   <div>
-                    <div className="font-bold text-[#2A162B]">
+                    <div
+                      className={
+                        hydrationPending
+                          ? 'font-bold text-[#2A162B]'
+                          : 'font-normal text-[#8E7690]'
+                      }
+                    >
                       Hydration: {recoveryLog.water_glasses} / 10 Glasses
                     </div>
-                    <div className="text-[10px] text-[#7D607E]">
+                    <div
+                      className={`text-[10px] ${
+                        hydrationPending ? 'text-[#6E4D70]' : 'text-[#A892AA]'
+                      }`}
+                    >
                       {hydrationPending ? 'Stay hydrated for lactation' : 'Daily hydration goal met ✓'}
                     </div>
                   </div>
@@ -284,24 +383,46 @@ export function Navbar() {
                 <button
                   type="button"
                   onClick={() => updateWaterGlasses((recoveryLog.water_glasses || 0) + 1)}
-                  className="px-2.5 py-1 rounded-full bg-[#9E4875] hover:bg-[#8B3B64] text-white text-[10px] font-bold shrink-0 cursor-pointer"
+                  className={`px-2.5 py-1 rounded-full text-[10px] shrink-0 cursor-pointer transition-colors ${
+                    hydrationPending
+                      ? 'bg-[#9E4875] hover:bg-[#8B3B64] text-white font-bold'
+                      : 'bg-[#EBE0EC] hover:bg-[#E1D2E3] text-[#7D607E] font-medium'
+                  }`}
                 >
                   +1 Glass
                 </button>
               </div>
 
-              {/* 4. Daily Mood Check-in Reminder */}
+              {/* 4. Daily Mood Check-in Reminder -> directs to Mood Logs (/mood) */}
               <Link
                 href="/mood"
                 onClick={() => setShowNotifications(false)}
-                className="p-2.5 rounded-xl bg-[#FAF4F9] hover:bg-[#F4E9F3] border border-[#EFE2EE] flex items-start gap-2 transition-colors"
+                className={`p-2.5 rounded-xl border flex items-start gap-2 transition-colors ${
+                  !hasLoggedMoodToday
+                    ? 'bg-[#FFF4F8] hover:bg-[#FCE8F0] border-[#F8D0DF]'
+                    : 'bg-[#F9F6FA]/70 hover:bg-[#F3EDF5] border-[#EDE4EE]'
+                }`}
               >
-                <Smile className="w-3.5 h-3.5 text-[#9E4875] shrink-0 mt-0.5" />
+                <Smile
+                  className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${
+                    !hasLoggedMoodToday ? 'text-[#9E4875]' : 'text-[#B29BB4]'
+                  }`}
+                />
                 <div>
-                  <div className="font-bold text-[#2A162B]">
+                  <div
+                    className={
+                      !hasLoggedMoodToday
+                        ? 'font-bold text-[#2A162B]'
+                        : 'font-normal text-[#8E7690]'
+                    }
+                  >
                     {hasLoggedMoodToday ? 'Today’s Mood Logged ✓' : 'Daily Mood Check-In Pending'}
                   </div>
-                  <div className="text-[10px] text-[#7D607E]">
+                  <div
+                    className={`text-[10px] ${
+                      !hasLoggedMoodToday ? 'text-[#6E4D70]' : 'text-[#A892AA]'
+                    }`}
+                  >
                     {hasLoggedMoodToday ? 'View your 7-day trend' : 'Take 5 seconds to reflect'}
                   </div>
                 </div>

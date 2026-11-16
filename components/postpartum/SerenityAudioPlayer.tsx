@@ -208,8 +208,8 @@ export function SerenityAudioPlayer() {
                 isPlaying ? 'animate-pulse scale-110' : ''
               } transition-transform`}
             ></div>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#9B5584] to-[#BA78A3] p-1 shadow-lg flex items-center justify-center border-2 border-white/30">
-              <LotusIcon className="w-6 h-6 text-white drop-shadow-md" />
+            <div className="w-10 h-10 rounded-full bg-white/95 p-1.5 shadow-lg flex items-center justify-center border-2 border-white/40">
+              <LotusIcon className="w-6 h-6 drop-shadow-xs" />
             </div>
           </div>
 
@@ -321,8 +321,8 @@ export function SerenityAudioPlayer() {
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className={`w-8 h-8 rounded-full ${track.iconBg} text-white flex items-center justify-center shadow-xs shrink-0`}>
-                    <LotusIcon className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-xs shrink-0">
+                    <LotusIcon className="w-5 h-5" />
                   </div>
                   <div className="min-w-0">
                     <div className={`text-xs font-bold flex items-center gap-1.5 ${isSelected ? 'text-[#F6B89E]' : 'text-white'}`}>

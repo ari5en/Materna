@@ -31,7 +31,6 @@ export async function DELETE() {
         primary_focus: [],
         baby_weight_lbs: null,
         baby_length_in: null,
-        baby_head_in: null,
         last_wake_at: null,
         onboarded: false,
         updated_at: new Date().toISOString(),
