@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { AlertCircle, X } from 'lucide-react';
 import { MobileFrame } from '@/components/shared/MobileFrame';
 import { Navbar } from '@/components/shared/Navbar';
@@ -16,6 +16,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { isInitialized, isAuthenticated, profile, syncError, clearSyncError } = useMaterna();
 
   const needsLogin = isInitialized && !isAuthenticated;
@@ -34,10 +35,12 @@ export default function DashboardLayout({
   }, [syncError, clearSyncError]);
 
   return (
-    <MobileFrame>
+    <div className="w-full min-h-screen bg-[#F8F3F7] text-[#2C1D30] flex flex-col">
       <Navbar />
-      <main className="flex-1 w-full pb-28 md:pb-12 pt-4 px-4 sm:px-6 lg:px-8">
-        {children}
+      <main className="flex-1 w-full max-w-6xl mx-auto pb-28 md:pb-12 pt-3 sm:pt-4 px-3 sm:px-6 lg:px-8">
+        <div key={pathname} className="page-enter">
+          {children}
+        </div>
       </main>
       <FloatingAiButton />
       <BottomNav />
@@ -55,6 +58,6 @@ export default function DashboardLayout({
           </button>
         </div>
       )}
-    </MobileFrame>
+    </div>
   );
 }

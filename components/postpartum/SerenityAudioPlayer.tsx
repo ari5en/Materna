@@ -180,7 +180,7 @@ export function SerenityAudioPlayer() {
 
   return (
     // Phones/tablets: stacked. Wide screens (xl+): player on the left, track list on the right.
-    <section className="bg-gradient-to-b from-[#6A4B72] via-[#5A3B60] to-[#462B4A] rounded-[32px] p-5 text-white shadow-xl relative overflow-hidden flex flex-col xl:flex-row gap-4 xl:gap-5">
+    <section className="bg-gradient-to-b from-[#6A4B72] via-[#5A3B60] to-[#462B4A] rounded-2xl sm:rounded-[32px] p-4 sm:p-5 text-white shadow-xl relative overflow-hidden flex flex-col xl:flex-row gap-4 xl:gap-5">
       {/* Background ambient lotus glow */}
       <div className="absolute -top-16 -right-16 w-60 h-60 rounded-full bg-[#A25F88]/30 blur-3xl pointer-events-none"></div>
 

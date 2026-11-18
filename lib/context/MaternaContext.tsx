@@ -53,7 +53,9 @@ export interface MaternaContextType {
   ) => Promise<void>;
   deleteGrowthMeasurement: (id: string) => Promise<void>;
   lastWakeTimestamp: string;
-  recordBabyWakeUp: () => Promise<void>;
+  babySleepingSince: string | null;
+  startBabySleep: (startedAt?: string) => Promise<void>;
+  recordBabyWakeUp: (durationMinsOverride?: number) => Promise<number>;
   isAiChatOpen: boolean;
   setIsAiChatOpen: (open: boolean) => void;
   /** True once the initial session check + data load has finished. */
@@ -102,8 +104,36 @@ function emptyProfile(id = ''): Profile {
     baby_length_in: null,
     onboarded: false,
     last_wake_at: null,
+    baby_sleeping_since: null,
     created_at: INITIAL_ISO_PLACEHOLDER,
   };
+}
+
+const LOCAL_STORAGE_PROFILE_KEY = 'materna_profile';
+
+function loadCachedProfile(): Profile {
+  if (typeof window === 'undefined') return emptyProfile();
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_PROFILE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') {
+        return { ...emptyProfile(), ...parsed };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to parse cached profile:', e);
+  }
+  return emptyProfile();
+}
+
+function saveCachedProfile(p: Profile) {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(LOCAL_STORAGE_PROFILE_KEY, JSON.stringify(p));
+  } catch (e) {
+    console.warn('Failed to save profile cache:', e);
+  }
 }
 
 function emptyRecovery(userId = '', loggedDate = INITIAL_DATE_PLACEHOLDER): MaternalRecoveryLog {
@@ -138,7 +168,9 @@ const fallbackContextValue: MaternaContextType = {
   updateGrowthMeasurement: async () => {},
   deleteGrowthMeasurement: async () => {},
   lastWakeTimestamp: INITIAL_ISO_PLACEHOLDER,
-  recordBabyWakeUp: async () => {},
+  babySleepingSince: null,
+  startBabySleep: async () => {},
+  recordBabyWakeUp: async () => 0,
   isAiChatOpen: false,
   setIsAiChatOpen: () => {},
   isInitialized: false,
@@ -183,6 +215,9 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
 
   const resetState = useCallback(() => {
     userIdRef.current = null;
+    try {
+      localStorage.removeItem(LOCAL_STORAGE_PROFILE_KEY);
+    } catch {}
     setProfile(emptyProfile());
     setBabyLogs([]);
     setMoodLogs([]);
@@ -191,6 +226,14 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     setGrowthMeasurements([]);
     setUserEmail(null);
     setIsAuthenticated(false);
+  }, []);
+
+  useEffect(() => {
+    setClientCurrentDate(new Date());
+    const cached = loadCachedProfile();
+    if (cached.baby_birth_date || cached.full_name || cached.baby_name) {
+      setProfile((prev) => ({ ...prev, ...cached }));
+    }
   }, []);
 
   const getUserId = useCallback(async (): Promise<string | null> => {
@@ -264,6 +307,7 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
         if (loadedProfile) {
           setClientCurrentDate(new Date());
           setProfile(loadedProfile);
+          saveCachedProfile(loadedProfile);
         }
 
         setBabyLogs(babyRes.data ?? []);
@@ -333,15 +377,33 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     const optimistic = { ...previous, ...fields };
     profileRef.current = optimistic;
     setProfile(optimistic);
+    saveCachedProfile(optimistic);
 
-    if (!supabase) return false;
+    if (!supabase) return true;
     try {
       const userId = await getUserId();
-      if (!userId) throw new Error('Not signed in');
+      if (!userId) {
+        // Unauthenticated/guest mode: persist optimistic profile locally
+        return true;
+      }
       const { error } = await (supabase as any)
         .from('profiles')
         .upsert({ id: userId, ...fields, updated_at: new Date().toISOString() });
-      if (error) throw error;
+      if (error) {
+        // If baby_sleeping_since column isn't in remote Supabase yet, retry without it
+        if (
+          'baby_sleeping_since' in fields &&
+          (error.message?.includes('baby_sleeping_since') || error.code === 'PGRST204')
+        ) {
+          const { baby_sleeping_since: _skip, ...remainingFields } = fields as any;
+          const { error: retryError } = await (supabase as any)
+            .from('profiles')
+            .upsert({ id: userId, ...remainingFields, updated_at: new Date().toISOString() });
+          if (retryError) throw retryError;
+          return true;
+        }
+        throw error;
+      }
       return true;
     } catch (e) {
       console.error('Supabase profile update failed:', e);
@@ -352,6 +414,7 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
       });
       profileRef.current = rolled;
       setProfile(rolled);
+      saveCachedProfile(rolled);
       setSyncError('Your changes could not be saved. Please try again.');
       return false;
     }
@@ -720,7 +783,7 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  // ---------- Wake state ----------
+  // ---------- Wake & Sleep state ----------
 
   const lastWakeTimestamp = useMemo(() => {
     if (profile.last_wake_at) return profile.last_wake_at;
@@ -728,8 +791,41 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
     return latestSleep?.timestamp ?? profile.created_at ?? INITIAL_ISO_PLACEHOLDER;
   }, [profile.last_wake_at, profile.created_at, babyLogs]);
 
-  const recordBabyWakeUp = async () => {
-    await updateProfile({ last_wake_at: new Date().toISOString() });
+  const babySleepingSince = profile.baby_sleeping_since ?? null;
+
+  const startBabySleep = async (startedAt?: string) => {
+    const sleepIso = startedAt || new Date().toISOString();
+    await updateProfile({ baby_sleeping_since: sleepIso });
+  };
+
+  const recordBabyWakeUp = async (durationMinsOverride?: number): Promise<number> => {
+    const nowIso = new Date().toISOString();
+    const sleepingSince = profileRef.current.baby_sleeping_since;
+
+    let computedDuration = durationMinsOverride;
+    if (computedDuration === undefined) {
+      if (sleepingSince) {
+        const diffMs = Date.now() - new Date(sleepingSince).getTime();
+        computedDuration = Math.max(1, Math.round(diffMs / 60000));
+      } else {
+        // Fallback if sleep wasn't started beforehand: default to 45 mins
+        computedDuration = 45;
+      }
+    }
+
+    await updateProfile({
+      baby_sleeping_since: null,
+      last_wake_at: nowIso,
+    });
+
+    if (computedDuration > 0) {
+      await addBabyLog('sleep', {
+        duration_mins: computedDuration,
+        notes: sleepingSince ? 'Automatic sleep-to-wake tracker' : 'Quick wake-up log',
+      });
+    }
+
+    return computedDuration;
   };
 
   // ---------- Auth ----------
@@ -765,6 +861,8 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
         updateGrowthMeasurement,
         deleteGrowthMeasurement,
         lastWakeTimestamp,
+        babySleepingSince,
+        startBabySleep,
         recordBabyWakeUp,
         isAiChatOpen,
         setIsAiChatOpen,

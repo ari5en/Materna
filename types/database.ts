@@ -11,6 +11,7 @@ export interface Profile {
   baby_length_in?: number | null;
   onboarded?: boolean;
   last_wake_at?: string | null;
+  baby_sleeping_since?: string | null;
   created_at: string;
   updated_at?: string;
 }

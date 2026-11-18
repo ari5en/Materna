@@ -148,22 +148,22 @@ export function MaternalMoodReflection() {
   const happyOffset = -(fragileDash + calmDash);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* 1. Glowing 3D Heart Card */}
-      <section className="bg-gradient-to-br from-[#FFEAE0] via-[#FCE4EF] to-[#EDE3F7] rounded-[32px] p-6 text-center border border-[#EFE1ED] shadow-[0_8px_30px_rgba(150,90,130,0.06)] relative overflow-hidden">
+      <section className="hover-lift bg-gradient-to-br from-[#FFEAE0] via-[#FCE4EF] to-[#EDE3F7] rounded-2xl sm:rounded-[32px] p-4 sm:p-6 text-center border border-[#EFE1ED] shadow-[0_8px_30px_rgba(150,90,130,0.06)] relative overflow-hidden">
         {/* Soft watermark text */}
-        <div className="absolute top-2 left-0 right-0 font-serif text-5xl font-bold text-[#8C5D8B]/8 pointer-events-none tracking-widest uppercase">
+        <div className="absolute top-2 left-0 right-0 font-serif text-3xl sm:text-5xl font-bold text-[#8C5D8B]/8 pointer-events-none tracking-widest uppercase">
           Mindfulness
         </div>
 
         {/* 3D Glowing Heart with Liquid Wave */}
-        <div className="relative z-10 py-2 flex flex-col items-center">
-          <div className="relative w-28 h-28 flex items-center justify-center">
+        <div className="relative z-10 py-1 sm:py-2 flex flex-col items-center">
+          <div className="relative w-20 h-20 sm:w-28 sm:h-28 flex items-center justify-center">
             {/* Ambient Heart Glow */}
             <div className="absolute inset-0 bg-[#E888B4]/40 rounded-full blur-xl animate-pulse"></div>
 
             {/* Glowing Heart SVG Shape with Gradient */}
-            <svg className="w-24 h-24 drop-shadow-md" viewBox="0 0 100 90" fill="none">
+            <svg className="w-18 h-18 sm:w-24 sm:h-24 drop-shadow-md" viewBox="0 0 100 90" fill="none">
               <defs>
                 <linearGradient id="heartGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#FFA6C0" />
@@ -191,20 +191,20 @@ export function MaternalMoodReflection() {
             </svg>
 
             {/* In-Heart Percentage */}
-            <span className="absolute font-serif font-bold text-2xl text-white tracking-tight drop-shadow-sm select-none">
+            <span className="absolute font-serif font-bold text-xl sm:text-2xl text-white tracking-tight drop-shadow-sm select-none">
               {heartWellnessPct}%
             </span>
           </div>
 
-          <div className="mt-3 space-y-0.5">
-            <h3 className="font-serif text-xl font-bold text-[#2E182F]">
+          <div className="mt-2 sm:mt-3 space-y-0.5">
+            <h3 className="font-serif text-lg sm:text-xl font-bold text-[#2E182F]">
               {!hasLogsThisWeek
                 ? 'Fresh Week Ahead'
                 : heartWellnessPct >= 70
                 ? 'Keep going!'
                 : 'Be gentle with yourself'}
             </h3>
-            <p className="text-xs text-[#876587] flex items-center justify-center gap-1 font-semibold">
+            <p className="text-[11px] sm:text-xs text-[#876587] flex items-center justify-center gap-1 font-semibold">
               <TrendingUp className="w-3.5 h-3.5 text-[#9E4875]" />
               <span>
                 {hasLogsThisWeek
@@ -219,11 +219,11 @@ export function MaternalMoodReflection() {
       </section>
 
       {/* 2. Mood Statistic Donut Card */}
-      <section className="bg-white rounded-[32px] p-6 border border-[#EFE3EE] shadow-[0_8px_30px_rgba(140,80,120,0.05)] space-y-5">
+      <section className="hover-lift bg-white rounded-2xl sm:rounded-[32px] p-4 sm:p-6 border border-[#EFE3EE] shadow-[0_8px_30px_rgba(140,80,120,0.05)] space-y-4 sm:space-y-5">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="font-serif text-xl font-bold text-[#2A162B]">Mood Statistic</h2>
-            <p className="text-xs text-[#8E738E]">Live breakdown from your mood logs</p>
+            <h2 className="font-serif text-lg sm:text-xl font-bold text-[#2A162B]">Mood Statistic</h2>
+            <p className="text-[11px] sm:text-xs text-[#8E738E]">Live breakdown from your mood logs</p>
           </div>
           <div className="w-8 h-8 rounded-full bg-[#F7EFF6] text-[#7E5785] flex items-center justify-center">
             <LotusIcon className="w-4 h-4" />
@@ -308,13 +308,13 @@ export function MaternalMoodReflection() {
         </div>
 
         {/* 5-Point Expressive Scale Check-In */}
-        <div className="space-y-3 pt-2 border-t border-[#F1E6F0]">
+        <div className="space-y-2.5 sm:space-y-3 pt-2 border-t border-[#F1E6F0]">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-[#553C56]">Log today&apos;s emotional state:</span>
-            <span className="text-xs font-bold text-[#9E4875]">{currentOption.descriptor}</span>
+            <span className="text-[11px] sm:text-xs font-bold text-[#553C56]">Log today&apos;s emotional state:</span>
+            <span className="text-[11px] sm:text-xs font-bold text-[#9E4875]">{currentOption.descriptor}</span>
           </div>
 
-          <div className="flex items-center justify-between gap-1.5 bg-[#F9F4F9] p-2 rounded-2xl border border-[#EDE0EC]">
+          <div className="flex items-center justify-between gap-1 sm:gap-1.5 bg-[#F9F4F9] p-1.5 sm:p-2 rounded-xl sm:rounded-2xl border border-[#EDE0EC]">
             {moodOptions.map((option) => {
               const isSelected = selectedScore === option.score;
               return (
@@ -322,20 +322,20 @@ export function MaternalMoodReflection() {
                   key={option.score}
                   type="button"
                   onClick={() => setSelectedScore(option.score)}
-                  className={`flex-1 flex flex-col items-center py-2.5 px-1 rounded-xl transition-all cursor-pointer ${
+                  className={`flex-1 flex flex-col items-center py-2 sm:py-2.5 px-0.5 sm:px-1 rounded-lg sm:rounded-xl transition-all cursor-pointer ${
                     isSelected
                       ? `${option.colorBg} ${option.colorText} shadow-md scale-105 font-bold`
                       : 'hover:bg-white text-[#836985]'
                   }`}
                 >
-                  <span className="text-base select-none">
+                  <span className="text-sm sm:text-base select-none">
                     {option.score === 1 && '🥀'}
                     {option.score === 2 && '🌸'}
                     {option.score === 3 && '🌊'}
                     {option.score === 4 && '🪷'}
                     {option.score === 5 && '✨'}
                   </span>
-                  <span className="text-[10px] mt-1 leading-tight">{option.label}</span>
+                  <span className="text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 leading-tight">{option.label}</span>
                 </button>
               );
             })}
@@ -343,8 +343,8 @@ export function MaternalMoodReflection() {
         </div>
 
         {/* Contextual Tags */}
-        <div className="space-y-2 pt-1">
-          <label className="text-xs font-bold text-[#553C56]">
+        <div className="space-y-1.5 sm:space-y-2 pt-0.5 sm:pt-1">
+          <label className="text-[11px] sm:text-xs font-bold text-[#553C56]">
             Postpartum Context Tags:
           </label>
           <div className="flex flex-wrap gap-1.5">
@@ -355,7 +355,7 @@ export function MaternalMoodReflection() {
                   key={tag}
                   type="button"
                   onClick={() => toggleTag(tag)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                  className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
                     isSelected
                       ? 'bg-[#9E4875] text-white shadow-xs'
                       : 'bg-[#F4E8F2] hover:bg-[#EBDDE9] text-[#69486F]'
@@ -369,13 +369,13 @@ export function MaternalMoodReflection() {
         </div>
 
         {/* Journal Note Textarea (Always visible) */}
-        <div className="space-y-2 pt-1">
+        <div className="space-y-2 pt-0.5 sm:pt-1">
           <textarea
             value={noteText}
             onChange={(e) => setNoteText(e.target.value)}
             placeholder="How are your recovery, emotions, and rest feeling today?"
             rows={2}
-            className="w-full p-3 rounded-2xl bg-[#FAF5FA] border border-[#ECDDEC] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#A24874]"
+            className="w-full p-2.5 sm:p-3 rounded-xl sm:rounded-2xl bg-[#FAF5FA] border border-[#ECDDEC] text-xs text-[#2A162B] placeholder:text-[#A78FA8] focus:outline-hidden focus:ring-1 focus:ring-[#A24874]"
           />
         </div>
 
@@ -384,7 +384,7 @@ export function MaternalMoodReflection() {
           type="button"
           onClick={handleSaveReflection}
           disabled={isSaved}
-          className="w-full py-3 rounded-full bg-[#69486F] hover:bg-[#57395D] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-80"
+          className="w-full py-2.5 sm:py-3 rounded-full bg-[#69486F] hover:bg-[#57395D] text-white text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-80"
         >
           {isSaved ? (
             <>
@@ -397,20 +397,20 @@ export function MaternalMoodReflection() {
         </button>
 
         {/* Trigger button for Pop-up Mood History Dialog */}
-        <div className="pt-1">
+        <div className="pt-0.5 sm:pt-1">
           <button
             type="button"
             onClick={() => {
               setEditingMoodId(null);
               setShowHistoryModal(true);
             }}
-            className="w-full flex items-center justify-between text-[11px] font-bold text-[#7B5D7E] hover:text-[#2A162B] px-1 py-1 cursor-pointer transition-colors"
+            className="w-full flex items-center justify-between text-[10px] sm:text-[11px] font-bold text-[#7B5D7E] hover:text-[#2A162B] px-1 py-1 cursor-pointer transition-colors"
           >
             <span className="flex items-center gap-1.5">
               <BookOpen className="w-3.5 h-3.5 text-[#9E4875]" />
               <span>Recent Check-Ins &amp; Journal Notes ({moodLogs.length})</span>
             </span>
-            <span className="flex items-center gap-1 text-[10px] text-[#9E4875]">
+            <span className="flex items-center gap-1 text-[9px] sm:text-[10px] text-[#9E4875]">
               <span>View &amp; Edit</span>
               <ChevronRight className="w-3.5 h-3.5" />
             </span>
@@ -424,11 +424,11 @@ export function MaternalMoodReflection() {
               setEditingMoodId(null);
               setShowHistoryModal(false);
             }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
           >
             <div
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[32px] max-w-md w-full p-6 border border-[#ECE0EC] shadow-2xl space-y-4 animate-in zoom-in-95 duration-150"
+              className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
             >
               <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
                 <div>

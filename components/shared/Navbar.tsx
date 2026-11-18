@@ -185,75 +185,70 @@ export function Navbar() {
   ];
 
   return (
-    <header className="sticky top-0 z-30 w-full bg-[#F8F3F7]/90 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-3 border-b border-[#EFE3EE]/80 transition-all">
-      <div className="max-w-6xl mx-auto flex items-center justify-between relative">
+    <header className="sticky top-0 z-30 w-full bg-[#F8F3F7]/95 backdrop-blur-md border-b border-[#EFE3EE] transition-all">
+      <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between relative">
         {/* Left: Brand Logo & Title */}
-        <Link href="/" className="flex items-center gap-2.5">
-          <LotusIcon className="w-8 h-8" />
+        <Link href="/" className="group flex items-center gap-2 sm:gap-2.5 transition-transform duration-200 active:scale-95">
+          <div className="transition-transform duration-300 ease-out group-hover:scale-110 group-hover:rotate-6">
+            <LotusIcon className="w-7 h-7 sm:w-8 sm:h-8" />
+          </div>
           <div className="flex flex-col">
-            <span className="font-serif font-bold text-lg tracking-tight text-[#3A223E] leading-none">
+            <span className="font-serif font-bold text-base sm:text-lg tracking-tight text-[#3A223E] leading-none transition-colors duration-200 group-hover:text-[#9E4875]">
               Materna
             </span>
-            <span className="text-[10px] font-medium text-[#8F7292] leading-tight">
+            <span className="text-[9px] sm:text-[10px] font-medium text-[#8F7292] leading-tight">
               Postpartum • Wk {postData.weeks}
             </span>
           </div>
         </Link>
 
         {/* Center: Desktop Navigation Bar with Berry Rose active pill */}
-        <nav className="hidden md:flex items-center gap-1.5 bg-white/80 p-1.5 rounded-full border border-[#EBE0EC] shadow-2xs">
+        <nav className="hidden md:flex items-center gap-1.5 bg-white/80 backdrop-blur-xs p-1.5 rounded-full border border-[#EBE0EC] shadow-2xs">
           {navLinks.map((item) => {
             const Icon = item.icon;
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                className={`group flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold transition-all duration-200 ease-out ${
                   item.active
-                    ? 'bg-[#9E4875] text-white shadow-xs'
-                    : 'text-[#7B637E] hover:text-[#381F3C] hover:bg-[#F7EEF6]'
+                    ? 'bg-[#9E4875] text-white shadow-xs scale-[1.02]'
+                    : 'text-[#7B637E] hover:text-[#2A162B] hover:bg-[#F7EEF6] hover:scale-[1.03] active:scale-95'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
+                <Icon className="w-3.5 h-3.5 transition-transform duration-200 group-hover:scale-110" />
                 <span>{item.label}</span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Right Actions: Ask AI + Notifications */}
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={() => setIsAiChatOpen(true)}
-            aria-label="Ask Materna AI"
-            className="hidden sm:flex items-center gap-1.5 bg-[#69486F] hover:bg-[#57395D] text-white text-xs font-semibold px-4 py-2 rounded-full shadow-2xs transition-all active:scale-95 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#FADCE8]" />
-            <span>Ask AI</span>
-          </button>
-
+        {/* Right Actions: Notifications */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
           <button
             ref={notifButtonRef}
             type="button"
             onClick={() => setShowNotifications((v) => !v)}
             aria-label="Notifications"
-            className="w-9 h-9 rounded-full bg-white text-[#58395D] flex items-center justify-center hover:bg-[#FDF9FD] transition-colors relative shadow-2xs border border-[#EBE0EC] cursor-pointer"
+            className="hover-bell w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white text-[#58395D] flex items-center justify-center hover:bg-[#FDF9FD] hover:border-[#DEC5DB] hover:shadow-xs transition-all duration-200 active:scale-95 relative shadow-2xs border border-[#EBE0EC] cursor-pointer"
           >
-            <Bell className="w-4 h-4" />
-            {activeAlertsCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#DE6082] text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white">
+            <Bell className="w-4 h-4 transition-transform duration-200" />
+            {isHydrated && activeAlertsCount > 0 && (
+              <span
+                suppressHydrationWarning
+                className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-[#DE6082] text-white text-[9px] font-bold flex items-center justify-center ring-2 ring-white animate-pulse"
+              >
                 {activeAlertsCount}
               </span>
             )}
           </button>
-
         </div>
 
         {/* Live Notifications Popover */}
         {showNotifications && (
           <div
             ref={notifPopoverRef}
-            className="absolute right-0 top-13 w-80 bg-white rounded-2xl border border-[#ECE0EC] shadow-xl p-4 space-y-2.5 z-50 animate-in fade-in zoom-in-95 duration-150"
+            className="absolute right-3 sm:right-6 top-12 sm:top-13 w-[calc(100vw-1.5rem)] sm:w-80 max-w-sm bg-white/98 backdrop-blur-md rounded-2xl border border-[#ECE0EC] shadow-2xl p-3.5 sm:p-4 space-y-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200"
           >
             <div className="flex items-center justify-between pb-1.5 border-b border-[#F2E8F1]">
               <span className="text-xs font-bold text-[#2A162B]">

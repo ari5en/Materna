@@ -2,9 +2,23 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Sparkles, Check } from 'lucide-react';
+import { ArrowRight, Sparkles } from 'lucide-react';
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { LotusIcon } from '@/components/shared/LotusIcon';
+import {
+  type UnitSystem,
+  weightFromLbs,
+  lengthFromIn,
+  weightToLbs,
+  lengthToIn,
+  weightUnitLabel,
+  lengthUnitLabel,
+  kgToLbs,
+  lbsToKg,
+  cmToIn,
+  inToCm,
+  round1,
+} from '@/lib/units';
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -29,6 +43,9 @@ export default function OnboardingPage() {
     <OnboardingForm
       initialFullName={profile.full_name && profile.full_name !== 'Mama' ? profile.full_name : ''}
       initialBabyName={profile.baby_name && profile.baby_name !== 'Baby' ? profile.baby_name : ''}
+      initialBirthDate={profile.baby_birth_date ? profile.baby_birth_date.split('T')[0] : ''}
+      initialWeightLbs={profile.baby_weight_lbs ?? null}
+      initialLengthIn={profile.baby_length_in ?? null}
     />
   );
 }
@@ -36,19 +53,31 @@ export default function OnboardingPage() {
 function OnboardingForm({
   initialFullName,
   initialBabyName,
+  initialBirthDate,
+  initialWeightLbs,
+  initialLengthIn,
 }: {
   initialFullName: string;
   initialBabyName: string;
+  initialBirthDate: string;
+  initialWeightLbs: number | null;
+  initialLengthIn: number | null;
 }) {
   const router = useRouter();
-  const { updateProfile } = useMaterna();
+  const { updateProfile, addGrowthMeasurement } = useMaterna();
 
   const [step, setStep] = useState<1 | 2>(1);
   const [fullName, setFullName] = useState(initialFullName);
   const [babyName, setBabyName] = useState(initialBabyName);
-  const [birthDate, setBirthDate] = useState('');
+  const [birthDate, setBirthDate] = useState(initialBirthDate);
   const [todayStr, setTodayStr] = useState('');
-  const [primaryFocus, setPrimaryFocus] = useState<string[]>([]);
+  const [unit, setUnit] = useState<UnitSystem>('metric');
+  const [babyWeight, setBabyWeight] = useState(() =>
+    initialWeightLbs != null ? String(weightFromLbs(initialWeightLbs, 'metric')) : ''
+  );
+  const [babyLength, setBabyLength] = useState(() =>
+    initialLengthIn != null ? String(lengthFromIn(initialLengthIn, 'metric')) : ''
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -56,23 +85,29 @@ function OnboardingForm({
     const d = new Date();
     const t = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     setTodayStr(t);
-    setBirthDate((prev) => prev || t);
-  }, []);
+    // Preserve existing birth date if available; never overwrite with today's date
+    if (initialBirthDate) {
+      setBirthDate(initialBirthDate);
+    }
+  }, [initialBirthDate]);
 
-  const focusOptions = [
-    'Wake Windows & Sleep',
-    'Nursing & Milk Supply',
-    'Pelvic Floor & Healing',
-    'Emotional Wellness & Mood',
-    'Serenity & Mindfulness Audio',
-  ];
-
-  const toggleFocus = (opt: string) => {
-    setPrimaryFocus((prev) =>
-      prev.includes(opt) ? prev.filter((o) => o !== opt) : [...prev, opt]
-    );
+  const handleUnitChange = (next: UnitSystem) => {
+    if (next === unit) return;
+    const convert = (value: string, fn: (n: number) => number) => {
+      const n = parseFloat(value);
+      return Number.isFinite(n) && n > 0 ? String(round1(fn(n))) : value;
+    };
+    if (next === 'metric') {
+      setBabyWeight((prev) => convert(prev, lbsToKg));
+      setBabyLength((prev) => convert(prev, inToCm));
+    } else {
+      setBabyWeight((prev) => convert(prev, kgToLbs));
+      setBabyLength((prev) => convert(prev, cmToIn));
+    }
+    setUnit(next);
   };
 
+  // Step 1: names & birth date
   const handleContinue = () => {
     if (!fullName.trim() || !babyName.trim()) {
       setErrorMsg('Please enter your name and your baby’s name.');
@@ -86,14 +121,55 @@ function OnboardingForm({
     setStep(2);
   };
 
+  // Step 2: weight & length. Returns the values to save (lbs / in), or null if invalid.
+  const validateMeasurements = (): { weightLbs: number; lengthIn: number } | null => {
+    const parsedWeight = parseFloat(babyWeight);
+    const parsedLength = parseFloat(babyLength);
+
+    if (!Number.isFinite(parsedWeight) || parsedWeight <= 0 || !Number.isFinite(parsedLength) || parsedLength <= 0) {
+      setErrorMsg(
+        `Please enter your baby’s weight (${weightUnitLabel(unit)}) and length (${lengthUnitLabel(unit)}).`
+      );
+      return null;
+    }
+
+    const weightLbs = weightToLbs(parsedWeight, unit);
+    const lengthIn = lengthToIn(parsedLength, unit);
+
+    if (weightLbs < 2 || weightLbs > 55) {
+      setErrorMsg(
+        unit === 'metric'
+          ? 'Please enter a valid baby weight between 1.0 kg and 25.0 kg.'
+          : 'Please enter a valid baby weight between 2.0 lbs and 55.0 lbs.'
+      );
+      return null;
+    }
+
+    if (lengthIn < 12 || lengthIn > 45) {
+      setErrorMsg(
+        unit === 'metric'
+          ? 'Please enter a valid baby length between 30 cm and 115 cm.'
+          : 'Please enter a valid baby length between 12 in and 45 in.'
+      );
+      return null;
+    }
+
+    return { weightLbs, lengthIn };
+  };
+
   const handleFinish = async () => {
+    const measurements = validateMeasurements();
+    if (!measurements) return;
+
     setIsSubmitting(true);
     setErrorMsg(null);
+
     const ok = await updateProfile({
       full_name: fullName.trim(),
       baby_name: babyName.trim(),
       baby_birth_date: birthDate,
-      primary_focus: primaryFocus,
+      baby_weight_lbs: measurements.weightLbs,
+      baby_length_in: measurements.lengthIn,
       onboarded: true,
     });
     if (!ok) {
@@ -101,8 +177,18 @@ function OnboardingForm({
       setIsSubmitting(false);
       return;
     }
+
+    // Seed the growth history so the WHO percentile tracker has a baseline
+    await addGrowthMeasurement({
+      weight_lbs: measurements.weightLbs,
+      length_in: measurements.lengthIn,
+    });
+
     router.replace('/');
   };
+
+  const wLabel = weightUnitLabel(unit);
+  const lLabel = lengthUnitLabel(unit);
 
   return (
     <div className="min-h-screen bg-[#F8F3F7] flex flex-col justify-center items-center p-4">
@@ -196,42 +282,96 @@ function OnboardingForm({
           </div>
         )}
 
-        {/* Step 2: Primary Postpartum Focus */}
+        {/* Step 2: Baby's Weight & Length */}
         {step === 2 && (
           <div className="space-y-4">
             <div className="space-y-1">
               <h1 className="font-serif text-2xl sm:text-3xl font-bold text-[#2A162B]">
-                Your Sanctuary Focus
+                {babyName.trim() || 'Baby'}&apos;s Measurements
               </h1>
               <p className="text-xs text-[#7A617D] leading-relaxed">
-                Select the areas you&apos;d like Materna to highlight on your daily dashboard.
+                Enter your baby&apos;s most recent weight and length to set a baseline on the WHO growth curve.
               </p>
             </div>
 
-            <div className="space-y-2">
-              {focusOptions.map((opt) => {
-                const isSelected = primaryFocus.includes(opt);
-                return (
-                  <div
-                    key={opt}
-                    onClick={() => toggleFocus(opt)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
-                      isSelected
-                        ? 'bg-[#F9EFF6] border-[#EBD6E9] text-[#9E4875]'
-                        : 'bg-[#FAF4F9] border-[#EFE3EE] text-[#553857] hover:bg-[#F5EAF3]'
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-[#5B3F5D]">Units</span>
+                <div
+                  role="group"
+                  aria-label="Measurement unit system"
+                  className="inline-flex rounded-full bg-[#F5EAF4] p-0.5 border border-[#E6D4E5]"
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange('metric')}
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer ${
+                      unit === 'metric'
+                        ? 'bg-[#9E4875] text-white shadow-2xs'
+                        : 'text-[#6E5070] hover:text-[#2A162B]'
                     }`}
                   >
-                    <span className="text-xs font-bold">{opt}</span>
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs transition-colors ${
-                        isSelected ? 'bg-[#9E4875] text-white' : 'border border-[#D8C2D8]'
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3 h-3" />}
-                    </div>
-                  </div>
-                );
-              })}
+                    kg / cm
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleUnitChange('imperial')}
+                    className={`px-3 py-1 rounded-full text-[11px] font-bold transition-colors cursor-pointer ${
+                      unit === 'imperial'
+                        ? 'bg-[#9E4875] text-white shadow-2xs'
+                        : 'text-[#6E5070] hover:text-[#2A162B]'
+                    }`}
+                  >
+                    lbs / in
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#5B3F5D] block mb-1">
+                  Weight ({wLabel})
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    inputMode="decimal"
+                    value={babyWeight}
+                    onChange={(e) => setBabyWeight(e.target.value)}
+                    placeholder={unit === 'metric' ? '3.5' : '7.7'}
+                    className="w-full px-4 py-3 pr-12 rounded-2xl bg-[#FAF5FA] border border-[#ECE0EB] text-xs text-[#2A162B] font-medium focus:outline-hidden focus:ring-1 focus:ring-[#9E4875]"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#8E738E] pointer-events-none">
+                    {wLabel}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-[#5B3F5D] block mb-1">
+                  Length ({lLabel})
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    inputMode="decimal"
+                    value={babyLength}
+                    onChange={(e) => setBabyLength(e.target.value)}
+                    placeholder={unit === 'metric' ? '50.5' : '19.9'}
+                    className="w-full px-4 py-3 pr-12 rounded-2xl bg-[#FAF5FA] border border-[#ECE0EB] text-xs text-[#2A162B] font-medium focus:outline-hidden focus:ring-1 focus:ring-[#9E4875]"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[11px] font-bold text-[#8E738E] pointer-events-none">
+                    {lLabel}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[10px] text-[#8C728C]">
+                You can find these on your baby&apos;s hospital discharge papers or latest pediatrician visit. You can update them anytime from the dashboard.
+              </p>
             </div>
 
             {errorMsg && (
