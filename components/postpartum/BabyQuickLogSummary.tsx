@@ -298,9 +298,10 @@ export function BabyQuickLogSummary() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
+            className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full max-h-[85vh] flex flex-col p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl animate-in zoom-in-95 duration-150"
           >
-            <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-[#F2E8F1] shrink-0">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
                   {babyName}&apos;S CARE TIMELINE
@@ -313,25 +314,29 @@ export function BabyQuickLogSummary() {
                 type="button"
                 onClick={() => setShowTimeline(false)}
                 aria-label="Close history dialog"
-                className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer"
+                className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
+            {/* Scrollable Activity List */}
             {babyLogs.length === 0 ? (
-              <p className="text-xs text-[#8C728C] text-center py-6">
-                No activity logs recorded yet. Tap a card or quick button to log {babyName}&apos;s care.
-              </p>
+              <div className="py-10 text-center space-y-2">
+                <Clock className="w-8 h-8 text-[#CBB4CF] mx-auto" />
+                <p className="text-xs text-[#8C728C]">
+                  No activity logs recorded yet. Tap a quick-log card to record {babyName}&apos;s care.
+                </p>
+              </div>
             ) : (
-              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                {babyLogs.slice(0, 25).map((log) => (
+              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1.5 py-3 min-h-0">
+                {babyLogs.slice(0, 30).map((log) => (
                   <div
                     key={log.id}
-                    className="flex items-center justify-between bg-[#FAF5FA] px-3.5 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs"
+                    className="flex items-center justify-between bg-[#FAF5FA] hover:bg-[#F6EEF6] px-3.5 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs transition-colors"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-2 h-2 rounded-full bg-[#9E4875] shrink-0" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#9E4875] shrink-0" />
                       <div className="truncate">
                         <div className="font-semibold text-[#2A162B] truncate">
                           {formatLogDescription(log)}
@@ -345,7 +350,7 @@ export function BabyQuickLogSummary() {
                       <button
                         type="button"
                         onClick={() => openEditLog(log)}
-                        className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors"
+                        className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Edit</span>
@@ -358,6 +363,7 @@ export function BabyQuickLogSummary() {
                         }}
                         aria-label="Delete log"
                         className="p-1.5 rounded-full text-[#A888AA] hover:text-[#C93B63] hover:bg-[#FFF2F5] transition-colors cursor-pointer"
+                        title="Delete log entry"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -367,13 +373,16 @@ export function BabyQuickLogSummary() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={() => setShowTimeline(false)}
-              className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer"
-            >
-              Done
-            </button>
+            {/* Pinned Modal Footer */}
+            <div className="pt-3 border-t border-[#F2E8F1] shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowTimeline(false)}
+                className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

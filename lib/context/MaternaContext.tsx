@@ -492,16 +492,27 @@ export function MaternaProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteBabyLog = async (id: string) => {
-    if (!supabase) return;
     const removed = babyLogsRef.current.find((l) => l.id === id);
-    setBabyLogs((prev) => prev.filter((l) => l.id !== id));
+    const nextLogs = babyLogsRef.current.filter((l) => l.id !== id);
+    setBabyLogs(nextLogs);
 
+    // If the deleted log was a sleep log, recalculate last_wake_at to the previous sleep log
+    if (removed && removed.log_type === 'sleep') {
+      const nextLatestSleep = nextLogs.find((l) => l.log_type === 'sleep');
+      await updateProfile({
+        last_wake_at: nextLatestSleep ? nextLatestSleep.timestamp : null,
+      });
+    }
+
+    if (!supabase) return;
     const userId = await getUserId();
+    if (!userId) return;
+
     const { error } = await (supabase as any)
       .from('baby_logs')
       .delete()
       .eq('id', id)
-      .eq('user_id', userId ?? '');
+      .eq('user_id', userId);
     if (error) {
       console.error('Supabase baby log delete failed:', error);
       if (removed) {
