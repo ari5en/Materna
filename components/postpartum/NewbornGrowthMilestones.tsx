@@ -7,6 +7,7 @@ import { useMaterna } from '@/lib/context/MaternaContext';
 import { calculatePostpartumAge } from '@/lib/utils';
 import { BABY_52_WEEKS } from '@/lib/data/babyMilestones52';
 import type { GrowthMeasurement } from '@/types/database';
+import { ModalPortal } from '@/components/shared/ModalPortal';
 import {
   type UnitSystem,
   weightFromLbs,
@@ -309,15 +310,16 @@ export function NewbornGrowthMilestones() {
 
       {/* Pop-up Update Growth Dialog Modal */}
       {isEditingStats && (
-        <div
-          onClick={closeUpdateModal}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
-        >
-          <form
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={handleSaveStats}
-            className="bg-white rounded-2xl sm:rounded-[32px] max-w-sm w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
+        <ModalPortal>
+          <div
+            onClick={closeUpdateModal}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
           >
+            <form
+              onClick={(e) => e.stopPropagation()}
+              onSubmit={handleSaveStats}
+              className="bg-white rounded-2xl sm:rounded-[32px] max-w-sm w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
+            >
             <div className="flex items-center justify-between pb-2.5 border-b border-[#F2E8F1]">
               <div>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
@@ -392,7 +394,8 @@ export function NewbornGrowthMilestones() {
             </div>
           </form>
         </div>
-      )}
+      </ModalPortal>
+    )}
 
       {/* Trigger button for Pop-up Growth History Dialog */}
       <div>
@@ -417,13 +420,14 @@ export function NewbornGrowthMilestones() {
 
       {/* Pop-up Growth History Dialog Modal */}
       {showHistory && (
-        <div
-          onClick={() => {
-            setEditingGrowthId(null);
-            setShowHistory(false);
-          }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
-        >
+        <ModalPortal>
+          <div
+            onClick={() => {
+              setEditingGrowthId(null);
+              setShowHistory(false);
+            }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
+          >
           <div
             onClick={(e) => e.stopPropagation()}
             className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
@@ -568,7 +572,8 @@ export function NewbornGrowthMilestones() {
             </button>
           </div>
         </div>
-      )}
+      </ModalPortal>
+    )}
 
       {/* Checklist items */}
       <div className="space-y-2">

@@ -6,6 +6,7 @@ import { useMaterna } from '@/lib/context/MaternaContext';
 import { calculateWeeklyMoodMomentum } from '@/lib/utils';
 import { LotusIcon } from '../shared/LotusIcon';
 import type { MaternalMoodLog } from '@/types/database';
+import { ModalPortal } from '@/components/shared/ModalPortal';
 
 interface MoodOption {
   score: number;
@@ -419,13 +420,14 @@ export function MaternalMoodReflection() {
 
         {/* Pop-up Mood History Dialog Modal */}
         {showHistoryModal && (
-          <div
-            onClick={() => {
-              setEditingMoodId(null);
-              setShowHistoryModal(false);
-            }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
-          >
+          <ModalPortal>
+            <div
+              onClick={() => {
+                setEditingMoodId(null);
+                setShowHistoryModal(false);
+              }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
+            >
             <div
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150"
@@ -588,7 +590,8 @@ export function MaternalMoodReflection() {
               </button>
             </div>
           </div>
-        )}
+        </ModalPortal>
+      )}
       </section>
     </div>
   );

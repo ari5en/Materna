@@ -6,6 +6,7 @@ import { useMaterna } from '@/lib/context/MaternaContext';
 import { calculatePostpartumAge } from '@/lib/utils';
 import type { SafetyCategory } from '@/lib/ai/guardrails';
 import { LotusIcon } from './LotusIcon';
+import { ModalPortal } from './ModalPortal';
 
 interface Message {
   id: string;
@@ -280,14 +281,15 @@ export function AiAssistantModal() {
   };
 
   return (
-    <div
-      onClick={() => setIsAiChatOpen(false)}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
-    >
+    <ModalPortal>
       <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-[#F8F3F7] rounded-t-[32px] sm:rounded-[32px] max-h-[88vh] flex flex-col shadow-2xl border border-[#EFE1ED] overflow-hidden"
+        onClick={() => setIsAiChatOpen(false)}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-xs animate-in fade-in duration-200"
       >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-md sm:max-w-lg md:max-w-xl bg-[#F8F3F7] rounded-t-[32px] sm:rounded-[32px] max-h-[88vh] flex flex-col shadow-2xl border border-[#EFE1ED] overflow-hidden"
+        >
         {/* Header */}
         <div className="px-4 sm:px-5 py-3 sm:py-4 bg-white/95 border-b border-[#EFE1ED] flex items-center justify-between">
           <div className="flex items-center gap-2 sm:gap-2.5">
@@ -439,5 +441,6 @@ export function AiAssistantModal() {
         </form>
       </div>
     </div>
-  );
+  </ModalPortal>
+);
 }

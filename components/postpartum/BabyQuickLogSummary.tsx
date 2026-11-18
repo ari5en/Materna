@@ -5,6 +5,7 @@ import { Droplets, Baby, Moon, Plus, Check, Clock, Trash2, Edit3, ChevronRight, 
 import { useMaterna } from '@/lib/context/MaternaContext';
 import { formatTimeAgo, formatDuration } from '@/lib/utils';
 import type { BabyLog, BabyLogDetails } from '@/types/database';
+import { ModalPortal } from '@/components/shared/ModalPortal';
 
 export function BabyQuickLogSummary() {
   const { profile, babyLogs, addBabyLog, updateBabyLog, deleteBabyLog } = useMaterna();
@@ -292,99 +293,101 @@ export function BabyQuickLogSummary() {
 
       {/* Pop-up Activity History Dialog Modal */}
       {showTimeline && !activeModal && (
-        <div
-          onClick={() => setShowTimeline(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
-        >
+        <ModalPortal>
           <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full max-h-[85vh] flex flex-col p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl animate-in zoom-in-95 duration-150"
+            onClick={() => setShowTimeline(false)}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4"
           >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-[#F2E8F1] shrink-0">
-              <div>
-                <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
-                  {babyName}&apos;S CARE TIMELINE
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl sm:rounded-[32px] max-w-md w-full max-h-[85vh] flex flex-col p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl animate-in zoom-in-95 duration-150"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#F2E8F1] shrink-0">
+                <div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-[#9E4875]">
+                    {babyName}&apos;S CARE TIMELINE
+                  </div>
+                  <h3 className="font-serif font-bold text-lg text-[#2A162B]">
+                    Recent Activity History
+                  </h3>
                 </div>
-                <h3 className="font-serif font-bold text-lg text-[#2A162B]">
-                  Recent Activity History
-                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowTimeline(false)}
+                  aria-label="Close history dialog"
+                  className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowTimeline(false)}
-                aria-label="Close history dialog"
-                className="w-8 h-8 rounded-full bg-[#FAF4F9] hover:bg-[#F3E7F2] text-[#6B466D] flex items-center justify-center cursor-pointer transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            {/* Scrollable Activity List */}
-            {babyLogs.length === 0 ? (
-              <div className="py-10 text-center space-y-2">
-                <Clock className="w-8 h-8 text-[#CBB4CF] mx-auto" />
-                <p className="text-xs text-[#8C728C]">
-                  No activity logs recorded yet. Tap a quick-log card to record {babyName}&apos;s care.
-                </p>
-              </div>
-            ) : (
-              <div className="flex-1 overflow-y-auto space-y-2.5 pr-1.5 py-3 min-h-0">
-                {babyLogs.slice(0, 30).map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-center justify-between bg-[#FAF5FA] hover:bg-[#F6EEF6] px-3.5 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs transition-colors"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#9E4875] shrink-0" />
-                      <div className="truncate">
-                        <div className="font-semibold text-[#2A162B] truncate">
-                          {formatLogDescription(log)}
-                        </div>
-                        <div className="text-[10px] text-[#8C728C]">
-                          {formatTimeAgo(log.timestamp, nowMs)}
+              {/* Scrollable Activity List */}
+              {babyLogs.length === 0 ? (
+                <div className="py-10 text-center space-y-2">
+                  <Clock className="w-8 h-8 text-[#CBB4CF] mx-auto" />
+                  <p className="text-xs text-[#8C728C]">
+                    No activity logs recorded yet. Tap a quick-log card to record {babyName}&apos;s care.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex-1 overflow-y-auto space-y-2.5 pr-1.5 py-3 min-h-0">
+                  {babyLogs.slice(0, 30).map((log) => (
+                    <div
+                      key={log.id}
+                      className="flex items-center justify-between bg-[#FAF5FA] hover:bg-[#F6EEF6] px-3.5 py-2.5 rounded-2xl border border-[#EFE2EE] text-xs transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#9E4875] shrink-0" />
+                        <div className="truncate">
+                          <div className="font-semibold text-[#2A162B] truncate">
+                            {formatLogDescription(log)}
+                          </div>
+                          <div className="text-[10px] text-[#8C728C]">
+                            {formatTimeAgo(log.timestamp, nowMs)}
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <button
+                          type="button"
+                          onClick={() => openEditLog(log)}
+                          className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                          <span>Edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            deleteBabyLog(log.id);
+                            triggerToast('Log entry removed');
+                          }}
+                          aria-label="Delete log"
+                          className="p-1.5 rounded-full text-[#A888AA] hover:text-[#C93B63] hover:bg-[#FFF2F5] transition-colors cursor-pointer"
+                          title="Delete log entry"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <button
-                        type="button"
-                        onClick={() => openEditLog(log)}
-                        className="px-2.5 py-1 rounded-full bg-white hover:bg-[#F3E7F2] border border-[#E5D5E4] text-[10px] font-bold text-[#784776] flex items-center gap-1 cursor-pointer transition-colors shadow-2xs"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                        <span>Edit</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          deleteBabyLog(log.id);
-                          triggerToast('Log entry removed');
-                        }}
-                        aria-label="Delete log"
-                        className="p-1.5 rounded-full text-[#A888AA] hover:text-[#C93B63] hover:bg-[#FFF2F5] transition-colors cursor-pointer"
-                        title="Delete log entry"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
 
-            {/* Pinned Modal Footer */}
-            <div className="pt-3 border-t border-[#F2E8F1] shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowTimeline(false)}
-                className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
-              >
-                Done
-              </button>
+              {/* Pinned Modal Footer */}
+              <div className="pt-3 border-t border-[#F2E8F1] shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowTimeline(false)}
+                  className="w-full py-2.5 rounded-full bg-[#F5EAF3] hover:bg-[#EBDCE9] text-[#5C3E60] font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        </ModalPortal>
       )}
 
       {/* Toast Banner */}
@@ -397,7 +400,8 @@ export function BabyQuickLogSummary() {
 
       {/* Quick Log Details Modal */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4">
+        <ModalPortal>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-3 sm:p-4">
           <div className="bg-white rounded-2xl sm:rounded-[32px] max-w-sm w-full p-4 sm:p-6 border border-[#ECE0EC] shadow-2xl space-y-3.5 sm:space-y-4 animate-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-[#F2E8F1]">
               <h3 className="font-serif font-bold text-base text-[#2A162B] capitalize">
@@ -551,7 +555,8 @@ export function BabyQuickLogSummary() {
             </button>
           </div>
         </div>
-      )}
+      </ModalPortal>
+    )}
     </section>
   );
 }
